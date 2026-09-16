@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Trecho a mesclar no Info.plist -->
+<plist version="1.0">
+<dict>
+    <!--
+      ATS sem NENHUMA exceção. Sem NSAllowsArbitraryLoads, sem domain exception.
+      NSRequiresCertificateTransparency: o iOS exige SCTs válidos no certificado.
+      Este é o controle que o Android NÃO tem (docs/00-CORRECOES.md C5).
+    -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSAllowsArbitraryLoadsInWebContent</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>shieldack.com.br</key>
+            <dict>
+                <key>NSIncludesSubdomains</key><true/>
+                <key>NSRequiresCertificateTransparency</key><true/>
+                <key>NSExceptionMinimumTLSVersion</key><string>TLSv1.3</string>
+            </dict>
+        </dict>
+    </dict>
+
+    <key>NSFaceIDUsageDescription</key>
+    <string>Confirme sua identidade para acessar dados da sua conta.</string>
+
+    <!-- Fundo: drenagem do outbox com o app encerrado. -->
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array><string>shieldack.outbox.drain</string></array>
+    <key>UIBackgroundModes</key>
+    <array><string>fetch</string><string>processing</string><string>remote-notification</string></array>
+
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+</dict>
+</plist>

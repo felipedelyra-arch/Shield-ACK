@@ -1,0 +1,228 @@
+rules_version = '2';
+
+// =============================================================================
+// Shield Ack — Firestore Security Rules
+// Postura: DEFAULT DENY. Nenhuma coleção aberta.
+// Regra de ouro: cliente NUNCA escreve em progresso, xp, vidas, duelo, ranking,
+// amizade ou auditoria. Essas escritas são exclusivas do Admin SDK (Cloud Functions),
+// que ignora estas rules por design.
+// Cada bloco abaixo tem teste correspondente em test/rules/. Rule sem teste = rule quebrada.
+// =============================================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------- helpers
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Google Sign-In já entrega email_verified=true. Exigido SOMENTE em superfícies
+    // sociais — nunca bloqueia aprender. Ver docs/00-CORRECOES.md C8.
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function hasRole(role) {
+      return isSignedIn() && request.auth.token.role == role;
+    }
+
+    // App Check é enforçado no console (Firestore > App Check > Enforce).
+    // Esta função existe para negar explicitamente caso o enforce seja desligado
+    // por engano — defesa em profundidade, não substituto do enforce.
+    function appCheckOk() {
+      return request.auth.token.get('firebase', {}).get('sign_in_provider', '') != 'anonymous';
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+
+    // Só os campos listados podem aparecer no payload de escrita (anti mass-assignment).
+    function onlyFields(allowed) {
+      return incoming().diff(existing()).affectedKeys().hasOnly(allowed);
+    }
+
+    function isNonEmptyString(v, maxLen) {
+      return v is string && v.size() > 0 && v.size() <= maxLen;
+    }
+
+    // Impede que o cliente forje timestamps.
+    function serverTime(field) {
+      return incoming()[field] == request.time;
+    }
+
+    // ------------------------------------------------------------------ users
+
+    match /users/{uid} {
+      // Perfil é público-limitado: amigos e ranking precisam ler nome e avatar.
+      // Não há e-mail aqui — e-mail vive em /private, ver abaixo.
+      allow read: if isSignedIn();
+
+      // Criação do doc de perfil é feita pela Function `onUserCreate`. Cliente não cria.
+      allow create: if false;
+
+      // Cliente edita APENAS estes 3 campos. xp, level, hearts, streakDays,
+      // friendCode, emailVerified ficam fora da whitelist => escrita negada.
+      allow update: if isUser(uid)
+                    && onlyFields(['displayName', 'photoUrl', 'username', 'updatedAt'])
+                    && (!('displayName' in incoming()) || isNonEmptyString(incoming().displayName, 40))
+                    && (!('photoUrl'    in incoming()) || (incoming().photoUrl is string
+                                                           && incoming().photoUrl.size() <= 512
+                                                           && incoming().photoUrl.matches('https://.*')))
+                    // username muda por Callable (precisa reservar em /usernames atomicamente).
+                    && !('username' in incoming().diff(existing()).affectedKeys())
+                    && serverTime('updatedAt');
+
+      allow delete: if false; // exclusão de conta é Callable + LGPD, ver deletionRequests
+
+      // Dados sensíveis: só o dono lê, ninguém escreve pelo cliente.
+      match /private/{doc} {
+        allow read:  if isUser(uid);
+        allow write: if false;
+      }
+
+      // Progresso, ledger de XP e tentativas: leitura do dono, escrita só Admin SDK.
+      match /progress/{lessonId} {
+        allow read:  if isUser(uid);
+        allow write: if false;
+      }
+
+      match /xpEvents/{eventId} {
+        allow read:  if isUser(uid);
+        allow write: if false; // ledger append-only, escrito pela Function com ID = idempotencyKey
+      }
+
+      match /attempts/{attemptId} {
+        allow read:  if isUser(uid);
+        allow write: if false;
+      }
+
+      match /outboxAck/{idemKey} {
+        allow read:  if isUser(uid);
+        allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------- catálogo
+
+    // Documento agregado da árvore de conteúdo. Leitura autenticada, escrita só admin.
+    match /catalog/{version} {
+      allow read:  if isSignedIn();
+      allow write: if false;
+    }
+
+    match /tracks/{trackId} {
+      allow read:  if isSignedIn();
+      allow write: if false;
+
+      match /modules/{moduleId} {
+        allow read:  if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    match /lessons/{lessonId} {
+      allow read:  if isSignedIn();
+      allow write: if false;
+
+      // Enunciado + opções. O documento NÃO contém a resposta correta.
+      // Qualquer campo de gabarito aqui é bug de conteúdo, não de rule —
+      // validado por functions/src/admin/publishCatalog.ts antes de publicar.
+      match /questions/{qId} {
+        allow read:  if isSignedIn();
+        allow write: if false;
+      }
+    }
+
+    // ==========================================================================
+    // GABARITO — fechado para sempre. Nenhum cliente, em nenhuma condição,
+    // nem admin autenticado. Somente Admin SDK dentro de Cloud Functions.
+    // ==========================================================================
+    match /answerKeys/{qId} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+    // --------------------------------------------------------------- social
+
+    match /usernames/{usernameLower} {
+      allow read:  if isSignedIn(); // checagem de disponibilidade
+      allow write: if false;        // reserva atômica é Callable
+    }
+
+    match /friendRequests/{reqId} {
+      // Só remetente e destinatário enxergam. E-mail de terceiro nunca aparece aqui.
+      allow read:  if isVerified()
+                   && (existing().from == request.auth.uid || existing().to == request.auth.uid);
+      allow write: if false; // sendFriendRequest / respondFriendRequest são Callables
+    }
+
+    match /friendships/{pairId} {
+      allow read:  if isVerified() && request.auth.uid in existing().members;
+      allow write: if false;
+    }
+
+    // ---------------------------------------------------------------- duelos
+
+    match /duels/{duelId} {
+      allow read:  if isVerified() && request.auth.uid in existing().players;
+      allow write: if false; // transições de estado só via Callable + runTransaction
+
+      match /rounds/{n} {
+        allow read: if isVerified()
+                    && request.auth.uid in get(/databases/$(database)/documents/duels/$(duelId)).data.players;
+        allow write: if false;
+      }
+    }
+
+    // ---------------------------------------------------------------- ranking
+
+    match /leaderboards/{periodId}/members/{uid} {
+      allow read:  if isVerified();
+      allow write: if false; // escrito exclusivamente pela Function agendada
+    }
+
+    // -------------------------------------------------------- push / devices
+
+    match /devices/{tokenId} {
+      allow read:  if isSignedIn() && existing().uid == request.auth.uid;
+      allow write: if false; // registerDevice é Callable (valida token e faz cleanup)
+    }
+
+    // ------------------------------------------------------------ LGPD
+
+    match /deletionRequests/{uid} {
+      allow read:  if isUser(uid);
+      allow write: if false;
+    }
+
+    // ------------------------------------------- infraestrutura server-only
+
+    match /auditLogs/{logId} {
+      allow read:  if false; // nem o admin lê pelo cliente; auditoria se lê no BigQuery
+      allow write: if false;
+    }
+
+    match /counters/{name}/shards/{shardId} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+    match /rateLimits/{docId} {
+      allow read:  if false;
+      allow write: if false;
+    }
+
+    // ------------------------------------------------------------- catch-all
+    // Qualquer path não listado acima é negado. Explícito para não depender
+    // apenas do comportamento implícito.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

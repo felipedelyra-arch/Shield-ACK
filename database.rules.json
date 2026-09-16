@@ -1,0 +1,37 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "presence": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid",
+        ".validate": "newData.hasChildren(['online','lastSeen']) && newData.child('online').isBoolean()"
+      }
+    },
+
+    "duels": {
+      "$duelId": {
+        "state": {
+          ".read": "auth != null && root.child('duelMembers').child($duelId).child(auth.uid).exists()",
+          ".write": false
+        },
+        "answered": {
+          ".read": "auth != null && root.child('duelMembers').child($duelId).child(auth.uid).exists()",
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid && root.child('duelMembers').child($duelId).child(auth.uid).exists()",
+            ".validate": "newData.isBoolean() && newData.val() === true"
+          }
+        }
+      }
+    },
+
+    "duelMembers": {
+      "$duelId": {
+        ".read": false,
+        ".write": false
+      }
+    }
+  }
+}

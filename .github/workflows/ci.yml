@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  pull_request:
+  push: { branches: [main] }
+
+env:
+  FLUTTER_VERSION: '3.24.5'
+  NODE_VERSION: '22'
+
+jobs:
+  app:
+    name: Flutter — análise e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable }
+      - run: flutter pub get
+      - run: dart run build_runner build --delete-conflicting-outputs
+      - run: dart format --set-exit-if-changed lib test
+      - run: flutter analyze --fatal-infos
+      - name: Fronteiras de camada
+        run: ./scripts/check_layering.sh
+      - run: flutter test --coverage
+
+  functions:
+    name: Cloud Functions — tipos, lint e testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}', cache: npm, cache-dependency-path: functions/package-lock.json }
+      - run: npm ci
+        working-directory: functions
+      - run: npx tsc --noEmit
+        working-directory: functions
+      - run: npm run lint
+        working-directory: functions
+      - run: npx vitest run
+        working-directory: functions
+
+  rules:
+    name: Security Rules — suíte no emulador
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - run: npm i -g firebase-tools
+      - run: npm ci
+        working-directory: test/rules
+      # Rule sem teste é rule quebrada — este job é bloqueante.
+      - run: firebase emulators:exec --only firestore --project=demo-shieldack "npx vitest run"
+        working-directory: test/rules
+
+  security:
+    name: Varredura de dependências
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - run: npm ci && npm audit --audit-level=high
+        working-directory: functions
+      - uses: google/osv-scanner-action@v1
+        with: { scan-args: "--lockfile=./pubspec.lock --lockfile=./functions/package-lock.json" }
+      - name: Nenhum segredo no repositório
+        run: |
+          set -e
+          ! grep -rnE "(BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|service_account|AIza[0-9A-Za-z_-]{35})" \
+            --include='*.ts' --include='*.dart' --include='*.json' \
+            --exclude='google-services.json' --exclude='GoogleService-Info.plist' \
+            functions/src lib
+          ! grep -rn "functions.config()" functions/src
+
+  deploy-staging:
+    name: Deploy staging
+    needs: [app, functions, rules, security]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '${{ env.NODE_VERSION }}' }
+      - run: npm i -g firebase-tools
+      - run: npm ci
+        working-directory: functions
+      # Rules e indexes SEMPRE antes das Functions: uma Function nova que depende
+      # de um índice inexistente falha em produção, não no deploy.
+      - run: firebase deploy --only firestore:rules,firestore:indexes,database,storage --project staging
+        env: { FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}' }
+      - run: firebase deploy --only functions --project staging
+        env: { FIREBASE_TOKEN: '${{ secrets.FIREBASE_TOKEN }}' }

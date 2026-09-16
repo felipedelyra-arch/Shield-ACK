@@ -1,0 +1,14 @@
+{
+  "name": "shieldack-rules-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project=demo-shieldack \"vitest run\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.0.1",
+    "vitest": "^2.1.0",
+    "typescript": "^5.6.0"
+  }
+}

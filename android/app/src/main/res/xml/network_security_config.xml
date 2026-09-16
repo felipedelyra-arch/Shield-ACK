@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!--
+      cleartextTrafficPermitted=false: nenhuma requisição HTTP em claro, nunca.
+
+      trust-anchors com APENAS "system": esta é a linha que realmente barra
+      Burp/mitmproxy num aparelho sem root. Por padrão o Android confia em CAs
+      instaladas pelo usuário; removendo "user" do conjunto, um certificado de
+      proxy instalado manualmente deixa de ser aceito.
+
+      NOTA (docs/00-CORRECOES.md C5): o Android NÃO tem flag de Certificate
+      Transparency no Network Security Config. Quem afirma que "CT protege o
+      tráfego Firebase no Android" está errado. Aqui a defesa é trust-anchors +
+      App Check enforce no backend.
+    -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!--
+      Debug: CA do usuário liberada SOMENTE no build de debug, para inspecionar
+      tráfego durante o desenvolvimento. debug-overrides é ignorado em release
+      pelo próprio Android, então isto não vaza para produção.
+    -->
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

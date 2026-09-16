@@ -1,0 +1,94 @@
+name: shieldack
+description: Ensino gamificado em Cibersegurança, Redes, DevOps e DevSecOps.
+publish_to: none
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.5.0 <4.0.0"
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # --- Firebase
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
+  firebase_database: ^12.6.0
+  cloud_functions: ^6.5.0
+  firebase_app_check: ^0.4.8
+  firebase_messaging: ^16.7.0
+  firebase_remote_config: ^6.7.0
+  firebase_crashlytics: ^5.4.0
+  firebase_performance: ^0.11.6
+  firebase_storage: ^13.6.0          # NOTA: o pacote chama-se firebase_storage, não cloud_storage
+  google_sign_in: ^7.2.0
+
+  # --- Estado / navegação / modelagem
+  flutter_riverpod: ^3.4.3
+  go_router: ^18.0.1
+  freezed_annotation: ^3.0.0
+  json_annotation: ^4.9.0
+
+  # --- Rede (APIs próprias / CDN de vídeo). O SDK do Firebase usa a própria pilha.
+  dio: ^5.7.0
+
+  # --- Persistência local criptografada (um banco só; ver docs/00-CORRECOES.md C4)
+  drift: ^2.20.3
+  sqlite3: ^3.6.0
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # --- Segurança
+  flutter_secure_storage: ^11.1.1
+  local_auth: ^3.0.2
+  freerasp: ^8.2.2
+  crypto: ^3.0.5
+
+  # --- Mídia / notificações / plataforma
+  video_player: ^2.9.2
+  better_player_plus: ^1.0.8
+  flutter_local_notifications: ^22.3.1
+  workmanager: ^0.10.10
+  connectivity_plus: ^7.3.1
+  device_info_plus: ^13.2.0
+  package_info_plus: ^10.2.1
+  uuid: ^4.5.1
+  flutter_windowmanager_plus: ^1.0.1   # FLAG_SECURE no Android
+  google_fonts: ^8.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  integration_test:
+    sdk: flutter
+  build_runner: ^2.4.13
+  freezed: ^4.0.1        # 2.x usa o element model do analyzer 6 e crasha no analyzer 7
+  json_serializable: ^6.8.0
+  drift_dev: ^2.20.3
+  # riverpod_generator, riverpod_lint e custom_lint removidos: puxam
+  # custom_lint_core -> analyzer_plugin 0.12, incompatível com analyzer 7.x,
+  # e quebram o build_runner. Os providers são declarados à mão (core/di/providers.dart),
+  # então o codegen do Riverpod não estava sendo usado de qualquer forma.
+  # flutter_lints cobre o lint base.
+  flutter_lints: ^6.0.0
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+
+# Seleciona o binário do SQLite carregado em runtime.
+#
+# A partir do sqlite3 3.x é AQUI que o SQLCipher entra — os pacotes
+# sqlcipher_flutter_libs e sqlite3_flutter_libs viraram shims vazios.
+# Sem esta chave o app carrega o SQLite comum e o `PRAGMA key` é IGNORADO
+# EM SILÊNCIO, gravando o banco em claro. A checagem de `PRAGMA cipher_version`
+# em app_database.dart existe exatamente para transformar esse silêncio em erro.
+#
+# Licença: o build do SQLCipher tem licença própria e linka OpenSSL em
+# Android/Linux/Windows. Revisar antes de publicar.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlcipher

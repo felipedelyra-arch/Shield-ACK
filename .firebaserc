@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "shieldack-dev",
+    "dev": "shieldack-dev",
+    "staging": "shieldack-staging",
+    "prod": "shieldack-prod"
+  }
+}
