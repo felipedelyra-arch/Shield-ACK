@@ -1,6 +1,8 @@
 /// Entidades de trilha, perfil e questão. Sem Flutter e sem Firebase.
 library;
 
+import 'dart:math' as math;
+
 enum LessonStatus { locked, available, inProgress, failed, completed }
 
 class Lesson {
@@ -121,4 +123,23 @@ int displayHearts(int stored, DateTime? updatedAt, DateTime now) {
   if (stored >= max || updatedAt == null) return stored.clamp(0, max);
   final regen = now.difference(updatedAt).inMinutes ~/ 30;
   return (stored + (regen < 0 ? 0 : regen)).clamp(0, max);
+}
+
+/// Onde o XP está entre o nível atual e o próximo, de 0 a 1.
+///
+/// Mesma curva do servidor (functions/src/lib/xp.ts): o nível n exige
+/// floor(100 · n^1.5) de XP para passar ao n+1. Só para exibir.
+({int level, int toNext, double progress}) levelProgress(int xp) {
+  int threshold(int n) => n <= 0 ? 0 : (100 * math.pow(n, 1.5)).floor();
+  var level = 1;
+  while (threshold(level) <= xp) {
+    level++;
+  }
+  final floor = threshold(level - 1);
+  final ceil = threshold(level);
+  return (
+    level: level,
+    toNext: ceil - xp,
+    progress: (xp - floor) / (ceil - floor),
+  );
 }

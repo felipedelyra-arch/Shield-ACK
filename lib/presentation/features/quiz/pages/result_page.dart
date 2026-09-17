@@ -1,4 +1,7 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../domain/entities/learning.dart';
@@ -34,8 +37,11 @@ class _ResultPageState extends State<ResultPage>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1400),
+    duration: const Duration(milliseconds: 2200),
   );
+
+  /// Fração do tempo em que o ACK chega; depois dela vem a rajada.
+  static const _ackAt = 0.6;
 
   @override
   void initState() {
@@ -44,6 +50,15 @@ class _ResultPageState extends State<ResultPage>
     final reduce = WidgetsBinding
         .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
     reduce ? _c.value = 1 : _c.forward();
+    // O toque no dedo chega junto com o ACK (ou o RST).
+    var felt = false;
+    _c.addListener(() {
+      if (felt || _c.value < _ackAt) return;
+      felt = true;
+      widget.outcome.passed
+          ? HapticFeedback.mediumImpact()
+          : HapticFeedback.heavyImpact();
+    });
   }
 
   @override
@@ -75,14 +90,14 @@ class _ResultPageState extends State<ResultPage>
                     child: AnimatedBuilder(
                       animation: _c,
                       builder: (context, _) => CustomPaint(
-                          painter: _HandshakePainter(_c.value, passed),
+                          painter: _HandshakePainter(_c.value, passed, _ackAt),
                           size: Size.infinite),
                     ),
                   ),
                   const SizedBox(height: Gap.xl),
                   FadeTransition(
                     opacity: CurvedAnimation(
-                        parent: _c, curve: const Interval(0.75, 1)),
+                        parent: _c, curve: const Interval(0.5, 0.8)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -107,15 +122,25 @@ class _ResultPageState extends State<ResultPage>
                         const SizedBox(height: Gap.xl),
                         Row(
                           children: [
-                            Field(
-                              value: passed ? '+${o.xpAwarded}' : '0',
-                              label: 'XP',
-                              tone: passed ? Wire.ack.color : Shade.textFaint,
+                            AnimatedBuilder(
+                              animation: _c,
+                              builder: (_, __) => Field(
+                                // Conta junto com a rajada, termina no valor real.
+                                value: passed
+                                    ? '+${(o.xpAwarded * Curves.easeOut.transform(((_c.value - _ackAt) / (1 - _ackAt)).clamp(0.0, 1.0))).round()}'
+                                    : '0',
+                                label: 'XP',
+                                tone: passed ? Wire.ack.color : Shade.textFaint,
+                              ),
                             ),
                             const SizedBox(width: Gap.xl),
                             Field(
-                                value: '${o.streakDays}',
-                                label: 'dias seguidos'),
+                              value: '${o.streakDays}',
+                              label: o.streakDays == 1
+                                  ? 'dia seguido'
+                                  : 'dias seguidos',
+                              tone: Wire.syn.color,
+                            ),
                             const SizedBox(width: Gap.xl),
                             Field(
                               value: '${o.hearts}',
@@ -124,6 +149,12 @@ class _ResultPageState extends State<ResultPage>
                             ),
                           ],
                         ),
+                        if (passed) ...[
+                          const SizedBox(height: Gap.lg),
+                          _LevelUp(
+                              before: o.totalXp - o.xpAwarded,
+                              after: o.totalXp),
+                        ],
                         const SizedBox(height: Gap.xl),
                         // Explicação em todas, inclusive nos acertos: acertar por sorte
                         // e seguir adiante é pior do que errar.
@@ -210,15 +241,18 @@ class _Pending extends StatelessWidget {
 /// Desenha o handshake em três tempos: SYN sobe, SYN-ACK volta, ACK fecha.
 /// No caso de reprovação, o terceiro tempo vira um RST.
 class _HandshakePainter extends CustomPainter {
-  _HandshakePainter(this.t, this.passed);
+  _HandshakePainter(this.t, this.passed, this.ackAt);
   final double t;
   final bool passed;
+  final double ackAt;
 
   @override
   void paint(Canvas canvas, Size size) {
     const left = 14.0;
     final right = size.width - 14;
     const rowH = 34.0;
+    // O handshake usa o tempo até o ACK; o resto é da rajada.
+    final hs = (t / ackAt).clamp(0.0, 1.0);
 
     final rail = Paint()
       ..color = Shade.rule
@@ -254,7 +288,7 @@ class _HandshakePainter extends CustomPainter {
     for (var i = 0; i < steps.length; i++) {
       final s = steps[i];
       // Cada passo ocupa um terço do tempo, na ordem — é um handshake, não um fade.
-      final local = ((t - i / 3) * 3).clamp(0.0, 1.0);
+      final local = ((hs - i / 3) * 3).clamp(0.0, 1.0);
       if (local == 0) continue;
 
       final x = s.from + (s.to - s.from) * Curves.easeOutCubic.transform(local);
@@ -281,11 +315,33 @@ class _HandshakePainter extends CustomPainter {
         canvas.drawCircle(Offset(s.to, s.y), 3.5, Paint()..color = s.tone);
       }
     }
+
+    // Rajada: pacotes saindo do ACK. Só na aprovação — é a recompensa.
+    final b = ((t - ackAt) / (1 - ackAt)).clamp(0.0, 1.0);
+    if (!passed || b == 0 || b == 1) return;
+    final origin = Offset(right, rowH * 2.5);
+    final ease = Curves.easeOutCubic.transform(b);
+    for (var k = 0; k < 16; k++) {
+      final angle = math.pi / 2 + k * math.pi / 15; // leque para dentro da tela
+      final dist = 20 + ease * (70 + (k % 4) * 22);
+      final p = origin + Offset(math.cos(angle), -math.sin(angle)) * dist;
+      final color = (k % 5 == 0 ? Wire.syn : Wire.ack).color;
+      canvas.drawCircle(
+          p, 3 * (1 - b) + 1, Paint()..color = color.withValues(alpha: 1 - b));
+    }
+    canvas.drawCircle(
+      origin,
+      8 + ease * 40,
+      Paint()
+        ..color = Wire.ack.color.withValues(alpha: (1 - b) * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
   }
 
   @override
   bool shouldRepaint(_HandshakePainter old) =>
-      old.t != t || old.passed != passed;
+      old.t != t || old.passed != passed || old.ackAt != ackAt;
 }
 
 class _Explanation extends StatelessWidget {
@@ -306,6 +362,55 @@ class _Explanation extends StatelessWidget {
         ),
       ),
       child: Text(text, style: Face.body.copyWith(color: Shade.textDim)),
+    );
+  }
+}
+
+/// Anel do nível enchendo do XP de antes até o de agora.
+class _LevelUp extends StatelessWidget {
+  const _LevelUp({required this.before, required this.after});
+  final int before;
+  final int after;
+
+  @override
+  Widget build(BuildContext context) {
+    final from = levelProgress(before);
+    final to = levelProgress(after);
+    final up = to.level > from.level;
+
+    return Container(
+      padding: const EdgeInsets.all(Gap.md),
+      decoration: BoxDecoration(
+        color: Shade.surface,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          LevelRing(
+            level: to.level,
+            // Subiu de nível: o anel parte do zero do nível novo.
+            from: up ? 0 : from.progress,
+            progress: to.progress,
+          ),
+          const SizedBox(width: Gap.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                    up
+                        ? 'Você chegou ao nível ${to.level}'
+                        : 'Nível ${to.level}',
+                    style: Face.title
+                        .copyWith(color: up ? Wire.ack.color : Shade.text)),
+                const SizedBox(height: 2),
+                Text('${to.toNext} XP para o nível ${to.level + 1}',
+                    style: Face.meta),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

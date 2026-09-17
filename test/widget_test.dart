@@ -16,9 +16,18 @@ import 'package:shieldack/presentation/theme.dart';
 ///
 /// Não testa pixel nem layout — testa que as REGRAS que a interface promete
 /// continuam valendo. É o mínimo que falha se alguém quebrar a trilha.
+/// Com "reduzir animações" ligado, como no sistema: o nó pulsante para e o
+/// pumpAndSettle termina. Também exercita esse caminho de acessibilidade.
 Widget _app(DemoState demo, Widget home) => ProviderScope(
       overrides: demoOverrides(demo),
-      child: MaterialApp(theme: buildTheme(), home: home),
+      child: MaterialApp(
+        theme: buildTheme(),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: true),
+          child: child!,
+        ),
+        home: home,
+      ),
     );
 
 void main() {
@@ -29,7 +38,7 @@ void main() {
 
     expect(find.text('Handshake TCP: SYN, SYN-ACK, ACK'), findsOneWidget);
     // Aula em progresso mostra onde parou, não um rótulo genérico de estado.
-    expect(find.textContaining('parou em'), findsOneWidget);
+    expect(find.textContaining('Parou em'), findsOneWidget);
     // Aula bloqueada anuncia o custo, para dar motivo de seguir.
     expect(find.textContaining('XP'), findsWidgets);
   });
@@ -43,7 +52,7 @@ void main() {
     await tester.tap(find.text(locked.title));
     await tester.pumpAndSettle();
     // Sem navegação: continuamos na trilha.
-    expect(find.text('Shield Ack'), findsOneWidget);
+    expect(find.text('Olá, Felipe'), findsOneWidget);
   });
 
   testWidgets('quiz só mostra acerto e explicação depois do envio',

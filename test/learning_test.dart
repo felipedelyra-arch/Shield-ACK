@@ -35,4 +35,14 @@ void main() {
     expect(displayHearts(2, t, t.subtract(const Duration(hours: 1))), 2,
         reason: 'relógio do aparelho atrasado não tira vida');
   });
+
+  test('progresso de nível segue a curva do servidor', () {
+    expect(levelProgress(0), (level: 1, toNext: 100, progress: 0.0));
+    // nível 2 começa em 100 e termina em floor(100·2^1.5) = 282
+    final p = levelProgress(191);
+    expect(p.level, 2);
+    expect(p.toNext, 91);
+    expect(p.progress, closeTo(0.5, 0.01));
+    expect(levelProgress(282).level, 3);
+  });
 }
