@@ -15,5 +15,7 @@ export const Err = {
   notFound: () => new HttpsError('not-found', 'NOT_FOUND'),
   locked: (reason: string) => new HttpsError('permission-denied', reason),
   conflict: (detail: string) => new HttpsError('aborted', detail),
+  /** Contenção transitória no Firestore. `unavailable` mantém o item no outbox do cliente. */
+  contention: () => new HttpsError('unavailable', 'CONTENTION'),
   internal: () => new HttpsError('internal', 'INTERNAL'),
 } as const;

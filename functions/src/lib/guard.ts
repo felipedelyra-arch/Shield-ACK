@@ -74,9 +74,15 @@ export function guarded<S extends ZodType, R>(
         throw Err.invalidArg(`INVALID_${(first?.path.join('.') ?? 'PAYLOAD').toUpperCase()}`);
       }
 
-      if (opts.limit) await enforceRateLimit(ctx.uid, opts.action, opts.limit);
-
-      return handler(parsed.data, ctx, req);
+      try {
+        if (opts.limit) await enforceRateLimit(ctx.uid, opts.action, opts.limit);
+        return await handler(parsed.data, ctx, req);
+      } catch (e) {
+        // ABORTED (gRPC 10) cru do Firestore = transação perdeu a disputa após os retries
+        // do SDK. É transitório; sem isto vira INTERNAL e o cliente descarta o item.
+        if ((e as { code?: unknown }).code === 10) throw Err.contention();
+        throw e;
+      }
     },
   );
 }

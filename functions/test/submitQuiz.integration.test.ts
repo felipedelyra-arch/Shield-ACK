@@ -135,14 +135,16 @@ describe('submitQuiz — idempotência contra o emulador', () => {
     // do short-circuit de replay, então 50 baterias no limitador mediriam o
     // limitador, não a idempotência. O caso de estouro está no teste seguinte.
     const N = 25;
-    const results = await Promise.all(
-      Array.from({ length: N }, () =>
-        callSubmitQuiz(token, { lessonId: LESSON, idempotencyKey, clientElapsedMs, answers }),
-      ),
-    );
+    const payload = { lessonId: LESSON, idempotencyKey, clientElapsedMs, answers };
+    const results = await Promise.all(Array.from({ length: N }, () => callSubmitQuiz(token, payload)));
 
-    for (const r of results) {
-      expect(r.status, JSON.stringify(r.body)).toBe(200);
+    // Sob disputa, perder a transação é aceitável se vier como CONTENTION (retentável,
+    // fica no outbox) — nunca INTERNAL. O retry do outbox tem de convergir para 200.
+    for (const [i, r] of results.entries()) {
+      if (r.status === 200) continue;
+      expect(r.body.error?.message, JSON.stringify(r.body)).toBe('CONTENTION');
+      results[i] = await callSubmitQuiz(token, payload);
+      expect(results[i]!.status, JSON.stringify(results[i]!.body)).toBe(200);
     }
 
     // A prova: um único evento no ledger, com o ID igual à chave.
@@ -154,6 +156,12 @@ describe('submitQuiz — idempotência contra o emulador', () => {
     // E o cache derivado bate com o ledger.
     const user = await db.collection('users').doc(uid).get();
     expect(user.get('xp')).toBe(EXPECTED_XP);
+
+    // Os outros efeitos também são únicos: a chave trava a tentativa, não só o XP.
+    const attempts = await db.collection('users').doc(uid).collection('attempts').get();
+    expect(attempts.size).toBe(1);
+    const progress = await db.collection('users').doc(uid).collection('progress').doc(LESSON).get();
+    expect(progress.get('attempts')).toBe(1);
 
     // Exatamente uma resposta fez o trabalho; as demais são replay.
     const awarded = results.filter((r) => r.body.result?.xpAwarded === EXPECTED_XP);
@@ -206,6 +214,24 @@ describe('submitQuiz — idempotência contra o emulador', () => {
     const user = await db.collection('users').doc(uid).get();
     expect(user.get('xp')).toBe(EXPECTED_XP * 2);
   }, 60_000);
+
+  it('resposta abaixo do piso de tempo reprova, não credita XP e é auditada', async () => {
+    const uid = 'uidPisoDeTempoAntiCheat01';
+    await seedUser(uid);
+    const token = await idTokenFor(uid);
+
+    const r = await callSubmitQuiz(token, {
+      lessonId: LESSON, idempotencyKey: randomUUID(), clientElapsedMs: 100, answers, // tudo certo, rápido demais
+    });
+
+    expect(r.status, JSON.stringify(r.body)).toBe(200);
+    expect(r.body.result?.passed).toBe(false);
+    expect(r.body.result?.xpAwarded).toBe(0);
+
+    const logs = await db.collection('auditLogs')
+      .where('actorUid', '==', uid).where('action', '==', 'quiz_too_fast').get();
+    expect(logs.size).toBe(1);
+  }, 30_000);
 
   it('sem Authorization a Callable recusa antes de tocar o banco', async () => {
     const res = await fetch(callableUrl('submitQuiz'), {

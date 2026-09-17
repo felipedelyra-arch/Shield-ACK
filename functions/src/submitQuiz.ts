@@ -1,9 +1,9 @@
-import { db, FieldValue, Timestamp, SCHEMA_VERSION, CRITICAL_PATH, getAll } from './lib/init';
+import { db, FieldValue, Timestamp, SCHEMA_VERSION, CRITICAL_PATH, getAll, txGetAll } from './lib/init';
 import { guarded } from './lib/guard';
 import { submitQuizInput } from './domain/schemas';
 import { Err } from './lib/errors';
 import { audit } from './lib/audit';
-import { awardXp } from './lib/xp';
+import { stageXp } from './lib/xp';
 import { isCorrect, QuestionType } from './lib/grading';
 import { advanceStreak } from './lib/streak';
 import { currentHearts, MAX_HEARTS } from './lib/hearts';
@@ -93,97 +93,103 @@ export const submitQuiz = guarded(
     const score = correctCount / answers.length;
     const passed = score >= PASS_THRESHOLD && !suspiciouslyFast;
 
-    // --- 6. XP. eventId == idempotencyKey => retry jamais duplica.
+    // --- 6. Efeitos, numa transação só. O ack é relido AQUI: é ele que trava a chave.
+    // O check do passo 1 é só atalho. Sem isto, N retries simultâneos passariam todos
+    // por ele e cada um gravaria tentativa, streak e — se reprovado — tiraria uma vida.
     const baseXp = (lessonSnap.get('xpReward') as number) ?? 20;
     const xpAmount = passed ? Math.round(baseXp * (score === 1 ? 1.25 : 1)) : 0;
+    const eventRef = userRef.collection('xpEvents').doc(idempotencyKey);
 
-    const xp = passed
-      ? await awardXp({
-          uid: ctx.uid,
-          eventId: idempotencyKey,
-          amount: xpAmount,
-          reason: score === 1 ? 'quiz_perfect' : 'lesson_complete',
-          ref: `lessons/${lessonId}`,
-        })
-      : { awarded: 0, duplicate: false, totalXp: userSnap.get('xp') ?? 0, level: userSnap.get('level') ?? 1 };
+    return db.runTransaction(async (tx) => {
+      const [ackTx, progressTx, userTx, eventTx] = await txGetAll(tx, ackRef, progressRef, userRef, eventRef);
+      if (ackTx.exists) return { ...ackTx.data()!.result, replayed: true };
 
-    // --- 7. Efeitos colaterais: progresso monotônico, streak no fuso do usuário,
-    // vida consumida em caso de reprovação. Um batch só.
-    const now = new Date();
-    const tz = (userSnap.get('tz') as string) ?? 'America/Sao_Paulo';
-    const streak = advanceStreak(
-      { streakDays: userSnap.get('streakDays') ?? 0, lastStudyDay: userSnap.get('lastStudyDay') ?? null },
-      now,
-      tz,
-    );
+      // Relido na transação: outra chave pode ter consumido vidas desde o passo 3.
+      const now = new Date();
+      const heartsNow = currentHearts(userTx.get('hearts') ?? MAX_HEARTS, userTx.get('heartsUpdatedAt') ?? null, now);
+      if (heartsNow <= 0) throw Err.locked('NO_HEARTS');
+      const heartsAfter = passed ? heartsNow : heartsNow - 1;
 
-    const batch = db.batch();
+      const xp = passed
+        ? stageXp(
+            tx,
+            { uid: ctx.uid, eventId: idempotencyKey, amount: xpAmount, reason: score === 1 ? 'quiz_perfect' : 'lesson_complete', ref: `lessons/${lessonId}` },
+            userTx.get('xp') ?? 0,
+            eventTx.exists,
+          )
+        : { awarded: 0, totalXp: userTx.get('xp') ?? 0, level: userTx.get('level') ?? 1 };
 
-    // Progresso é MONOTÔNICO: nunca regride de completed para in_progress,
-    // e bestScore só sobe. É isto que torna dois dispositivos convergentes.
-    const prevBest = (progressSnap.get('bestScore') as number) ?? 0;
-    const prevStatus = progressSnap.get('status') as string;
-    batch.set(
-      progressRef,
-      {
-        status: passed || prevStatus === 'completed' ? 'completed' : 'in_progress',
-        bestScore: Math.max(prevBest, score),
-        completedAt: passed && prevStatus !== 'completed' ? FieldValue.serverTimestamp()
-                                                          : progressSnap.get('completedAt') ?? null,
-        attempts: FieldValue.increment(1),
-        updatedAt: FieldValue.serverTimestamp(),
+      const tz = (userTx.get('tz') as string) ?? 'America/Sao_Paulo';
+      const streak = advanceStreak(
+        { streakDays: userTx.get('streakDays') ?? 0, lastStudyDay: userTx.get('lastStudyDay') ?? null },
+        now,
+        tz,
+      );
+
+      // Progresso é MONOTÔNICO: nunca regride de completed para in_progress,
+      // e bestScore só sobe. É isto que torna dois dispositivos convergentes.
+      const prevStatus = progressTx.get('status') as string;
+      tx.set(
+        progressRef,
+        {
+          status: passed || prevStatus === 'completed' ? 'completed' : 'in_progress',
+          bestScore: Math.max((progressTx.get('bestScore') as number) ?? 0, score),
+          completedAt: passed && prevStatus !== 'completed' ? FieldValue.serverTimestamp()
+                                                            : progressTx.get('completedAt') ?? null,
+          attempts: FieldValue.increment(1),
+          updatedAt: FieldValue.serverTimestamp(),
+          schemaVersion: SCHEMA_VERSION,
+        },
+        { merge: true },
+      );
+
+      tx.set(
+        userRef,
+        {
+          streakDays: streak.streakDays,
+          lastStudyDay: streak.lastStudyDay,
+          hearts: heartsAfter,
+          heartsUpdatedAt: Timestamp.fromDate(now),
+          lastActiveAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        },
+        { merge: true },
+      );
+
+      tx.create(userRef.collection('attempts').doc(), {
+        lessonId,
+        score,
+        correctCount,
+        total: answers.length,
+        clientElapsedMs,
+        flaggedFast: suspiciouslyFast,
+        createdAt: FieldValue.serverTimestamp(),
         schemaVersion: SCHEMA_VERSION,
-      },
-      { merge: true },
-    );
+      });
 
-    batch.set(
-      userRef,
-      {
+      const result = {
+        passed,
+        score,
+        correctCount,
+        total: answers.length,
+        xpAwarded: xp.awarded,
+        totalXp: xp.totalXp,
+        level: xp.level,
+        hearts: heartsAfter,
         streakDays: streak.streakDays,
-        lastStudyDay: streak.lastStudyDay,
-        hearts: passed ? hearts : Math.max(0, hearts - 1),
-        heartsUpdatedAt: Timestamp.fromDate(now),
-        lastActiveAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true },
-    );
+        perQuestion, // enunciado + acerto + explicação. Nunca a resposta das que errou.
+        replayed: false,
+      };
 
-    batch.create(userRef.collection('attempts').doc(), {
-      lessonId,
-      score,
-      correctCount,
-      total: answers.length,
-      clientElapsedMs,
-      flaggedFast: suspiciouslyFast,
-      createdAt: FieldValue.serverTimestamp(),
-      schemaVersion: SCHEMA_VERSION,
+      // Ack idempotente: se a rede cair depois do commit, o retry do outbox devolve
+      // exatamente este objeto em vez de reprocessar. TTL 7 dias.
+      tx.create(ackRef, {
+        result,
+        createdAt: FieldValue.serverTimestamp(),
+        expireAt: Timestamp.fromMillis(now.getTime() + 7 * 86400 * 1000),
+      });
+
+      return result;
     });
-
-    const result = {
-      passed,
-      score,
-      correctCount,
-      total: answers.length,
-      xpAwarded: xp.awarded,
-      totalXp: xp.totalXp,
-      level: xp.level,
-      hearts: passed ? hearts : Math.max(0, hearts - 1),
-      streakDays: streak.streakDays,
-      perQuestion, // enunciado + acerto + explicação. Nunca a resposta das que errou.
-      replayed: false,
-    };
-
-    // Ack idempotente: se a rede cair depois do commit, o retry do outbox devolve
-    // exatamente este objeto em vez de reprocessar.
-    batch.set(ackRef, {
-      result,
-      createdAt: FieldValue.serverTimestamp(),
-      expireAt: Timestamp.fromMillis(now.getTime() + 7 * 86400 * 1000), // TTL 7 dias
-    });
-
-    await batch.commit();
-    return result;
   },
 );

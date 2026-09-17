@@ -52,36 +52,43 @@ export async function awardXp(a: XpAward): Promise<XpResult> {
 
   return db.runTransaction(async (tx) => {
     const [userSnap, eventSnap] = await txGetAll(tx, userRef, eventRef);
-    const currentXp: number = userSnap.get('xp') ?? 0;
-
-    if (eventSnap.exists) {
-      return {
-        awarded: 0,
-        duplicate: true,
-        totalXp: currentXp,
-        level: levelForXp(currentXp),
-      };
-    }
-
-    const totalXp = currentXp + a.amount;
-    const level = levelForXp(totalXp);
-
-    tx.create(eventRef, {
-      amount: a.amount,
-      reason: a.reason,
-      ref: a.ref,
-      periodId: periodId(),
-      createdAt: Timestamp.now(),
-      schemaVersion: SCHEMA_VERSION,
-    });
-
-    tx.update(userRef, {
-      xp: totalXp,
-      level,
-      lastActiveAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-
-    return { awarded: a.amount, duplicate: false, totalXp, level };
+    return stageXp(tx, a, userSnap.get('xp') ?? 0, eventSnap.exists);
   });
+}
+
+/**
+ * Parte transacional de `awardXp`, para quem já está numa transação maior.
+ * Pré-condição: `users/{uid}` e `xpEvents/{eventId}` foram lidos em `tx`.
+ */
+export function stageXp(
+  tx: FirebaseFirestore.Transaction,
+  a: XpAward,
+  currentXp: number,
+  eventExists: boolean,
+): XpResult {
+  if (eventExists) {
+    return { awarded: 0, duplicate: true, totalXp: currentXp, level: levelForXp(currentXp) };
+  }
+
+  const totalXp = currentXp + a.amount;
+  const level = levelForXp(totalXp);
+  const userRef = db.collection('users').doc(a.uid);
+
+  tx.create(userRef.collection('xpEvents').doc(a.eventId), {
+    amount: a.amount,
+    reason: a.reason,
+    ref: a.ref,
+    periodId: periodId(),
+    createdAt: Timestamp.now(),
+    schemaVersion: SCHEMA_VERSION,
+  });
+
+  tx.update(userRef, {
+    xp: totalXp,
+    level,
+    lastActiveAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
+
+  return { awarded: a.amount, duplicate: false, totalXp, level };
 }
