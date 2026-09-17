@@ -1,7 +1,7 @@
 {
   "projects": {
-    "default": "shieldack-dev",
-    "dev": "shieldack-dev",
+    "default": "shield-ack-52f4b",
+    "dev": "shield-ack-52f4b",
     "staging": "shieldack-staging",
     "prod": "shieldack-prod"
   }

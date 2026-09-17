@@ -70,7 +70,7 @@ jobs:
           set -e
           ! grep -rnE "(BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|service_account|AIza[0-9A-Za-z_-]{35})" \
             --include='*.ts' --include='*.dart' --include='*.json' \
-            --exclude='google-services.json' --exclude='GoogleService-Info.plist' \
+            --exclude='google-services.json' --exclude='GoogleService-Info.plist' --exclude='firebase_options.dart' \
             functions/src lib
           ! grep -rn "functions.config()" functions/src
 

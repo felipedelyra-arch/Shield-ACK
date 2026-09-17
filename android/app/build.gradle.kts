@@ -71,8 +71,9 @@ android {
             )
         }
         debug {
+            // Sem applicationIdSuffix: o flavor já separa (devDebug = br.com.shieldack.app.dev).
+            // Os dois juntos davam ".dev.dev", que não bate com o app registrado no Firebase.
             isMinifyEnabled = false
-            applicationIdSuffix = ".dev"
         }
     }
 
