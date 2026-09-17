@@ -98,15 +98,16 @@ justamente para deixar claro que aquilo **nunca** vive no cliente em produção.
 
 ## Rodar o app real contra o emulador do Firebase
 
-Sem projeto Firebase ainda, o app **de verdade** (login, Rules, Callables, outbox,
-banco cifrado) roda contra o Firebase Emulator Suite. Só App Check e Crashlytics
+Enquanto as Functions não estão publicadas (exigem plano Blaze), o app **de verdade**
+(login, Rules, Callables, outbox, banco cifrado) roda contra o Firebase Emulator Suite,
+com o mesmo ID do projeto dev e dados só na máquina. Só App Check e Crashlytics
 ficam de fora, porque dependem da nuvem.
 
 ```bash
 # 1. Emulador (Java 21) — deixe este terminal aberto
 export JAVA_HOME=~/Android/jdk21 PATH=~/Android/jdk21/bin:$PATH
 npm --prefix functions run build
-firebase emulators:start --project=demo-shieldack --only auth,firestore,functions,database
+firebase emulators:start --project dev --only auth,firestore,functions,database
 
 # 2. Em outro terminal: trilhas, aulas e questões de exemplo em catalog/v1
 npm --prefix functions run seed
@@ -116,8 +117,7 @@ for p in 9099 8080 5001 9000; do adb reverse tcp:$p tcp:$p; done
 flutter run --flavor dev --dart-define=EMULATOR_HOST=127.0.0.1
 ```
 
-Crie a conta com **e-mail e senha**. O login com Google precisa do projeto real
-(`flutterfire configure`). A UI do emulador em http://127.0.0.1:4000 mostra os
+A UI do emulador em http://127.0.0.1:4000 mostra os
 usuários, o progresso e o XP gravados pelas Functions.
 
 `EMULATOR_HOST` só funciona em build de debug: o HTTP em claro para 127.0.0.1 está

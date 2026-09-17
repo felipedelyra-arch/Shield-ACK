@@ -34,24 +34,27 @@ class SecurityService {
   static const _dbKeyAlias = 'shieldack.db.key.v1';
   static const _integrityAlias = 'shieldack.integrity.state.v1';
 
-  /// Chave AES-256 do banco local (SQLCipher).
+  /// Chave AES-256 do banco local (SQLCipher). [created] = acabou de ser gerada:
+  /// um arquivo de banco que já exista foi cifrado com outra chave e é lixo.
   ///
   /// Gerada com [Random.secure] — CSPRNG do SO. `Random()` aqui seria uma
   /// vulnerabilidade real: PRNG previsível derruba a criptografia inteira do cache.
-  Future<Uint8List> databaseKey() async {
+  Future<({Uint8List key, bool created})> databaseKey() async {
     final existing = await _storage.read(key: _dbKeyAlias);
     if (existing != null) {
       final bytes = base64Decode(existing);
-      if (bytes.length == 32) return Uint8List.fromList(bytes);
-      // Tamanho errado = armazenamento corrompido ou adulterado. Regenerar e apagar
-      // o banco é preferível a tentar abrir com chave inválida.
+      if (bytes.length == 32) {
+        return (key: Uint8List.fromList(bytes), created: false);
+      }
+      // Tamanho errado = armazenamento corrompido ou adulterado: regenera, e o
+      // chamador descarta o banco antigo.
     }
 
     final rnd = Random.secure();
     final key =
         Uint8List.fromList(List<int>.generate(32, (_) => rnd.nextInt(256)));
     await _storage.write(key: _dbKeyAlias, value: base64Encode(key));
-    return key;
+    return (key: key, created: true);
   }
 
   Future<void> saveIntegrityState(String json) =>

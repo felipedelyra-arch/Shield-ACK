@@ -73,20 +73,17 @@ class FirebaseBootstrap {
     unawaited(rc.fetchAndActivate().catchError((_) => false));
   }
 
-  /// Firebase Emulator Suite. Projeto `demo-*`: o emulador não fala com a nuvem.
+  /// Firebase Emulator Suite: mesmo projeto do flavor, dados só na máquina local.
   ///
-  /// Sem App Check (as Functions só o exigem em prod) e sem Crashlytics (não há
-  /// projeto para onde mandar). Todo o resto é o caminho real: Auth, Rules,
-  /// Callables, outbox e banco cifrado.
+  /// Usa as options reais porque, com google-services.json, o Android já sobe o app
+  /// [DEFAULT] com elas — options diferentes aqui dariam conflito. Rode o emulador
+  /// com o mesmo projeto: `firebase emulators:start --project dev`.
+  ///
+  /// Sem App Check (as Functions só o exigem em prod) e sem Crashlytics. Todo o
+  /// resto é o caminho real: Auth, Rules, Callables, outbox e banco cifrado.
   static Future<void> _initEmulator(String host) async {
     await Firebase.initializeApp(
-      options: const FirebaseOptions(
-        apiKey: 'fake-api-key',
-        appId: '1:000000000000:android:0000000000000000',
-        messagingSenderId: '000000000000',
-        projectId: 'demo-shieldack',
-      ),
-    );
+        options: DefaultFirebaseOptions.currentPlatform);
 
     FirebaseFirestore.instance.settings = const Settings(
         persistenceEnabled: true, cacheSizeBytes: 40 * 1024 * 1024);

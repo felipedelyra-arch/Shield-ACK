@@ -55,7 +55,8 @@ Future<void> main() async {
 
   // Chave do banco vem do Keystore/Keychain ANTES de qualquer abertura de banco.
   final security = SecurityService();
-  final db = AppDatabase.open(await security.databaseKey());
+  final dbKey = await security.databaseKey();
+  final db = AppDatabase.open(dbKey.key, fresh: dbKey.created);
 
   final integrity = IntegrityService(security);
 

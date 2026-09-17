@@ -70,8 +70,14 @@ class SessionGuard {
     await FirebaseFirestore.instance.terminate().catchError((_) {});
     await FirebaseFirestore.instance.clearPersistence().catchError((_) {});
 
-    await _db.wipe();
-    await _security.wipeKeys();
+    // Cada etapa local engole o próprio erro: um logout de segurança (token
+    // revogado, ataque ativo) tem que terminar deslogado mesmo com o banco quebrado.
+    await _security.wipeKeys().catchError((_) {});
+    try {
+      await _db.wipe((await _security.databaseKey()).key);
+    } catch (_) {
+      // Chave antiga já foi apagada; se o rekey falhou, o boot descarta o arquivo.
+    }
     await _auth.signOut().catchError((_) {});
 
     _onForcedLogout();

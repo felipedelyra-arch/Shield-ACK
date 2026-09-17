@@ -11,7 +11,7 @@ if (!process.env.FIRESTORE_EMULATOR_HOST) {
   console.error('FIRESTORE_EMULATOR_HOST ausente — o seed só roda contra o emulador.');
   process.exit(1);
 }
-process.env.GCLOUD_PROJECT ??= 'demo-shieldack';
+process.env.GCLOUD_PROJECT ??= 'shield-ack-52f4b'; // mesmo projeto do emulador (--project dev)
 
 const { db } = require('../lib/lib/init');
 const { buildCatalog } = require('../lib/admin/publishCatalog');

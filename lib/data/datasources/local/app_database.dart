@@ -61,11 +61,20 @@ class AppDatabase extends _$AppDatabase {
   /// `PRAGMA key` PRECISA ser o primeiro comando da conexão — depois de qualquer
   /// outra instrução o SQLCipher já decidiu o modo e a chave é ignorada
   /// silenciosamente, deixando o banco EM CLARO. É o erro clássico de integração.
-  static AppDatabase open(Uint8List key) {
+  ///
+  /// [fresh]: a chave acabou de ser criada. Um arquivo que sobrou foi cifrado com a
+  /// chave anterior (apagada num wipe) e não abre mais — é descartado.
+  static AppDatabase open(Uint8List key, {bool fresh = false}) {
     return AppDatabase(
       LazyDatabase(() async {
         final dir = await getApplicationDocumentsDirectory();
         final file = File(p.join(dir.path, 'shieldack.sqlite'));
+        if (fresh) {
+          for (final suffix in ['', '-wal', '-shm']) {
+            final f = File('${file.path}$suffix');
+            if (await f.exists()) await f.delete();
+          }
+        }
 
         // Qual binário do SQLite é carregado vem de `hooks.user_defines.sqlite3`
         // no pubspec.yaml (`source: sqlcipher`), não de um override em Dart:
@@ -98,11 +107,19 @@ class AppDatabase extends _$AppDatabase {
     );
   }
 
-  Future<void> wipe() async {
+  /// Apaga os dados e recifra o arquivo com [newKey].
+  ///
+  /// Só apagar a chave antiga deixaria o arquivo ilegível no próximo boot, e o que
+  /// fosse enfileirado até lá se perderia. VACUUM antes do rekey: sem ele, páginas
+  /// livres com dados antigos seriam recifradas com a chave nova e continuariam legíveis.
+  Future<void> wipe(Uint8List newKey) async {
     await transaction(() async {
       await delete(outboxItems).go();
       await delete(cachedCatalog).go();
     });
+    await customStatement('VACUUM;');
+    final hex = newKey.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    await customStatement("PRAGMA rekey = \"x'$hex'\";");
   }
 }
 

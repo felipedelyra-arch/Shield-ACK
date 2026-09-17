@@ -181,7 +181,13 @@ class ActionButton extends StatelessWidget {
                 : Text(label,
                     style: Face.body.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: enabled ? Shade.base : Shade.textFaint,
+                      // Texto escuro só sobre fundo claro: o botão secundário
+                      // (tone: Shade.surface) ficava escuro sobre escuro.
+                      color: !enabled
+                          ? Shade.textFaint
+                          : color.computeLuminance() > 0.3
+                              ? Shade.base
+                              : Shade.text,
                     )),
           ),
         ),

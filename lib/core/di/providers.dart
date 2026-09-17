@@ -98,7 +98,8 @@ final tracksProvider = StreamProvider<List<Track>>((ref) {
 /// Container mínimo para o isolate do WorkManager (sem UI, sem listeners).
 Future<ProviderContainer> buildHeadlessContainer() async {
   final security = SecurityService();
-  final db = AppDatabase.open(await security.databaseKey());
+  final dbKey = await security.databaseKey();
+  final db = AppDatabase.open(dbKey.key, fresh: dbKey.created);
   return ProviderContainer(overrides: [
     securityServiceProvider.overrideWithValue(security),
     appDatabaseProvider.overrideWithValue(db),
