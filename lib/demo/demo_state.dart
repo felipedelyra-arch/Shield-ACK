@@ -57,6 +57,13 @@ class DemoState extends ChangeNotifier {
     DemoDuel('Júlia', 'Redes', DuelTurn.invite, 0, 0, 0),
   ];
 
+  /// Posição assistida; só avança, como `syncWatchProgress` no servidor.
+  void recordWatch(DemoLesson lesson, int positionSec) {
+    final p = positionSec / lesson.durationSec;
+    if (p > lesson.progress) lesson.progress = p.clamp(0, 1);
+    notifyListeners();
+  }
+
   /// Aplica o resultado de um quiz. Em produção isto é a resposta de
   /// `submitQuiz` — aqui só mexe nos mesmos campos que a Callable mexeria.
   void applyQuiz(

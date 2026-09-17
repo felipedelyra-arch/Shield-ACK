@@ -1,11 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../data/datasources/local/app_database.dart';
 import '../../data/datasources/local/outbox.dart';
+import '../../data/repositories/firebase_auth_repository.dart';
+import '../../data/repositories/firebase_learning_repository.dart';
 import '../../data/repositories/quiz_repository_impl.dart';
+import '../../domain/entities/learning.dart';
+import '../../domain/repositories/learning_repository.dart';
 import '../../domain/repositories/quiz_repository.dart';
 import '../firebase/functions_client.dart';
 import '../security/integrity_service.dart';
@@ -45,8 +51,49 @@ final outboxProvider = Provider<Outbox>((ref) {
   return outbox;
 });
 
-final quizRepositoryProvider = Provider<QuizRepository>(
-    (ref) => QuizRepositoryImpl(ref.watch(outboxProvider)));
+// Repositórios. O modo demo sobrescreve os três (lib/demo/demo_repositories.dart);
+// as telas só conhecem as interfaces de domain/.
+
+final quizRepositoryProvider = Provider<QuizRepository>((ref) =>
+    QuizRepositoryImpl(ref.watch(outboxProvider), FirebaseFirestore.instance));
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  const serverClientId = String.fromEnvironment('GOOGLE_SERVER_CLIENT_ID');
+  return FirebaseAuthRepository(
+    FirebaseAuth.instance,
+    wipeSession: () =>
+        ref.read(sessionGuardProvider).forceLogout('user_logout'),
+    googleServerClientId: serverClientId.isEmpty ? null : serverClientId,
+  );
+});
+
+final learningRepositoryProvider =
+    Provider<LearningRepository>((ref) => FirebaseLearningRepository(
+          db: FirebaseFirestore.instance,
+          functions: ref.watch(functionsClientProvider),
+          outbox: ref.watch(outboxProvider),
+          catalogVersion:
+              FirebaseRemoteConfig.instance.getString('catalog_version'),
+        ));
+
+final uidProvider = StreamProvider<String?>(
+    (ref) => ref.watch(authRepositoryProvider).watchUid());
+
+// Dependem do uid: trocar de conta recria os streams em vez de mostrar dados da anterior.
+
+final profileProvider = StreamProvider<Profile>((ref) {
+  final uid = ref.watch(uidProvider).value;
+  return uid == null
+      ? const Stream.empty()
+      : ref.watch(learningRepositoryProvider).watchProfile(uid);
+});
+
+final tracksProvider = StreamProvider<List<Track>>((ref) {
+  final uid = ref.watch(uidProvider).value;
+  return uid == null
+      ? const Stream.empty()
+      : ref.watch(learningRepositoryProvider).watchTracks(uid);
+});
 
 /// Container mínimo para o isolate do WorkManager (sem UI, sem listeners).
 Future<ProviderContainer> buildHeadlessContainer() async {

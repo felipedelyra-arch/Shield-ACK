@@ -148,7 +148,14 @@ class Outbox {
       status: Value(permanent || attempts >= _maxAttempts ? 'dead' : 'pending'),
       attempts: Value(attempts),
       nextAttemptAtMs: Value(DateTime.now().add(delay).millisecondsSinceEpoch),
-      lastError: Value(failure.runtimeType.toString()),
+      // O código do contrato (NO_HEARTS, LESSON_LOCKED…) é o que a UI mostra num item morto.
+      lastError: Value(switch (failure) {
+        DeniedFailure(:final code) ||
+        ConflictFailure(:final code) ||
+        InvalidInputFailure(:final code) =>
+          code,
+        _ => failure.runtimeType.toString(),
+      }),
     ));
   }
 
@@ -161,12 +168,13 @@ class Outbox {
 
   /// Resultado já sincronizado de uma ação — usado para reconciliar a tela de quiz
   /// quando o envio só subiu depois que o usuário saiu da tela.
-  Future<Map<String, dynamic>?> resultFor(String idempotencyKey) async {
-    final row = await (_db.select(_db.outboxItems)
-          ..where((t) => t.idempotencyKey.equals(idempotencyKey)))
-        .getSingleOrNull();
-    return row?.resultMap;
-  }
+  Future<Map<String, dynamic>?> resultFor(String idempotencyKey) async =>
+      (await find(idempotencyKey))?.resultMap;
+
+  Future<OutboxItem?> find(String idempotencyKey) =>
+      (_db.select(_db.outboxItems)
+            ..where((t) => t.idempotencyKey.equals(idempotencyKey)))
+          .getSingleOrNull();
 
   /// Limpeza: itens concluídos há mais de 7 dias não servem para nada.
   Future<void> vacuum() async {

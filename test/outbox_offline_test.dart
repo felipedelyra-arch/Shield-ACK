@@ -1,10 +1,14 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shieldack/core/error/failure.dart';
 import 'package:shieldack/core/error/result.dart';
 import 'package:shieldack/core/firebase/functions_client.dart';
 import 'package:shieldack/data/datasources/local/app_database.dart';
 import 'package:shieldack/data/datasources/local/outbox.dart';
+import 'package:shieldack/data/repositories/quiz_repository_impl.dart';
+import 'package:shieldack/domain/entities/quiz_submission.dart';
 
 /// Cenários offline obrigatórios (docs/06-operacao.md §6.4).
 ///
@@ -28,6 +32,14 @@ class _FakeClient implements FunctionsClient {
   @override
   noSuchMethod(Invocation i) => super.noSuchMethod(i);
 }
+
+class _NoFirestore extends Mock implements FirebaseFirestore {}
+
+const _submission = QuizSubmission(
+  lessonId: 'l1',
+  clientElapsedMs: 9000,
+  answers: [QuizAnswer(questionId: 'q1', value: 1)],
+);
 
 void main() {
   late AppDatabase db;
@@ -124,5 +136,47 @@ void main() {
 
     await Outbox(db, client).drain(); // "novo boot"
     expect((await outbox.resultFor(key))?['replayed'], true);
+  });
+
+  group('QuizRepositoryImpl.submit', () {
+    test('online: devolve o resultado do servidor, não "pendente"', () async {
+      final client = _FakeClient((_, __) async => const Ok({
+            'passed': true,
+            'score': 1,
+            'correctCount': 1,
+            'total': 1,
+            'xpAwarded': 25,
+            'totalXp': 25,
+            'level': 1,
+            'hearts': 5,
+            'streakDays': 1,
+            'perQuestion': [],
+            'replayed': false,
+          }));
+      final repo = QuizRepositoryImpl(Outbox(db, client), _NoFirestore());
+
+      final outcome = (await repo.submit(_submission)).valueOrNull!;
+      expect(outcome.pending, isFalse);
+      expect(outcome.xpAwarded, 25);
+    });
+
+    test('recusa definitiva chega à tela com o código do servidor', () async {
+      final client =
+          _FakeClient((_, __) async => const Err(DeniedFailure('NO_HEARTS')));
+      final repo = QuizRepositoryImpl(Outbox(db, client), _NoFirestore());
+
+      final failure = (await repo.submit(_submission)).failureOrNull;
+      expect(failure, isA<DeniedFailure>());
+      expect((failure! as DeniedFailure).code, 'NO_HEARTS');
+    });
+
+    test('sem rede: fica na fila e a tela recebe "pendente"', () async {
+      final client = _FakeClient((_, __) async => const Err(OfflineFailure()));
+      final repo = QuizRepositoryImpl(Outbox(db, client), _NoFirestore());
+
+      final outcome = (await repo.submit(_submission)).valueOrNull!;
+      expect(outcome.pending, isTrue);
+      expect(await Outbox(db, client).watchPending().first, 1);
+    });
   });
 }

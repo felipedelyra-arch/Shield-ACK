@@ -29,10 +29,10 @@ class _ShellState extends State<Shell> {
       body: IndexedStack(
         index: _tab,
         children: [
-          TracksPage(demo: widget.demo),
+          const TracksPage(),
           DuelPage(demo: widget.demo),
           RankingPage(demo: widget.demo),
-          ProfilePage(demo: widget.demo),
+          const ProfilePage(),
         ],
       ),
       bottomNavigationBar: NavigationBar(

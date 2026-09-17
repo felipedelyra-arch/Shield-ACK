@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../demo/demo_state.dart';
+import '../domain/entities/learning.dart';
+import '../domain/entities/quiz_submission.dart';
 import '../main.dart' show forcedLogoutProvider, isDemo;
 import 'features/auth/pages/login_page.dart';
 import 'features/lesson_player/pages/lesson_page.dart';
@@ -36,26 +38,27 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginPage()),
       GoRoute(
         path: '/lesson',
-        builder: (_, s) => LessonPage(lesson: s.extra! as DemoLesson),
+        builder: (_, s) => LessonPage(lesson: s.extra! as Lesson),
       ),
       GoRoute(
         path: '/quiz',
-        builder: (_, s) => QuizPage(lesson: s.extra! as DemoLesson, demo: demo),
+        builder: (_, s) => QuizPage(lesson: s.extra! as Lesson),
       ),
       GoRoute(
         path: '/result',
         builder: (_, s) {
-          final (correct, total, lesson) = s.extra! as (int, int, DemoLesson);
+          final (lesson, questions, outcome) =
+              s.extra! as (Lesson, List<Question>, QuizOutcome);
           return ResultPage(
-              correct: correct, total: total, lesson: lesson, demo: demo);
+              lesson: lesson, questions: questions, outcome: outcome);
         },
       ),
     ],
   );
 });
 
-/// Fonte única do estado exibido. Em produção esta referência é substituída
-/// pelos providers de domínio; as telas não mudam.
+/// Estado da demo. Trilha, aula e quiz já leem dos repositórios (core/di);
+/// duelo e ranking ainda leem daqui.
 final demoStateProvider = Provider((_) => DemoState());
 
 class _AuthRefresh extends ChangeNotifier {

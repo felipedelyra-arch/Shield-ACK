@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -8,10 +11,14 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../firebase_options.dart';
+import '../di/providers.dart' show functionsRegion;
 
 /// Inicialização do Firebase. Ordem importa.
 class FirebaseBootstrap {
-  static Future<void> init({required bool isProd}) async {
+  static Future<void> init(
+      {required bool isProd, String emulatorHost = ''}) async {
+    if (emulatorHost.isNotEmpty) return _initEmulator(emulatorHost);
+
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
 
@@ -61,7 +68,40 @@ class FirebaseBootstrap {
       minimumFetchInterval: const Duration(hours: 1),
     ));
     await rc.setDefaults(remoteConfigDefaults);
-    unawaited(rc.fetchAndActivate()); // não bloqueia o boot
+    // Não bloqueia o boot. Sem o catchError, abrir o app offline mandava um
+    // "crash fatal" para o Crashlytics via PlatformDispatcher.onError.
+    unawaited(rc.fetchAndActivate().catchError((_) => false));
+  }
+
+  /// Firebase Emulator Suite. Projeto `demo-*`: o emulador não fala com a nuvem.
+  ///
+  /// Sem App Check (as Functions só o exigem em prod) e sem Crashlytics (não há
+  /// projeto para onde mandar). Todo o resto é o caminho real: Auth, Rules,
+  /// Callables, outbox e banco cifrado.
+  static Future<void> _initEmulator(String host) async {
+    await Firebase.initializeApp(
+      options: const FirebaseOptions(
+        apiKey: 'fake-api-key',
+        appId: '1:000000000000:android:0000000000000000',
+        messagingSenderId: '000000000000',
+        projectId: 'demo-shieldack',
+      ),
+    );
+
+    FirebaseFirestore.instance.settings = const Settings(
+        persistenceEnabled: true, cacheSizeBytes: 40 * 1024 * 1024);
+    // automaticHostMapping troca 127.0.0.1 por 10.0.2.2 (emulador Android);
+    // no aparelho físico com `adb reverse` queremos o host literal.
+    await FirebaseAuth.instance
+        .useAuthEmulator(host, 9099, automaticHostMapping: false);
+    FirebaseFirestore.instance
+        .useFirestoreEmulator(host, 8080, automaticHostMapping: false);
+    FirebaseFunctions.instanceFor(region: functionsRegion)
+        .useFunctionsEmulator(host, 5001, automaticHostMapping: false);
+    FirebaseDatabase.instance
+        .useDatabaseEmulator(host, 9000, automaticHostMapping: false);
+
+    await FirebaseRemoteConfig.instance.setDefaults(remoteConfigDefaults);
   }
 }
 

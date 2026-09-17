@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../demo/demo_state.dart';
+import '../../../../domain/entities/learning.dart';
+import '../../../../domain/entities/quiz_submission.dart';
 import '../../../theme.dart';
 import '../../../widgets/trace.dart';
 
-/// Resultado do questionário.
+/// Resultado do questionário, como o servidor corrigiu.
 ///
 /// Este é o ÚNICO momento animado do app. A sequência desenha o handshake
 /// fechando — SYN, SYN-ACK, ACK — e só então revela o XP. É o momento que dá
@@ -15,17 +16,15 @@ import '../../../widgets/trace.dart';
 /// que funcionar nos dois sentidos, senão vira enfeite.
 class ResultPage extends StatefulWidget {
   const ResultPage({
-    required this.correct,
-    required this.total,
     required this.lesson,
-    required this.demo,
+    required this.questions,
+    required this.outcome,
     super.key,
   });
 
-  final int correct;
-  final int total;
-  final DemoLesson lesson;
-  final DemoState demo;
+  final Lesson lesson;
+  final List<Question> questions;
+  final QuizOutcome outcome;
 
   @override
   State<ResultPage> createState() => _ResultPageState();
@@ -37,8 +36,6 @@ class _ResultPageState extends State<ResultPage>
     vsync: this,
     duration: const Duration(milliseconds: 1400),
   );
-
-  bool get _passed => widget.correct / widget.total >= 0.7;
 
   @override
   void initState() {
@@ -57,13 +54,133 @@ class _ResultPageState extends State<ResultPage>
 
   @override
   Widget build(BuildContext context) {
-    final xpGained = _passed
-        ? widget.lesson.xpReward +
-            (widget.correct == widget.total
-                ? (widget.lesson.xpReward * .25).round()
-                : 0)
-        : 0;
+    final o = widget.outcome;
+    if (o.pending) return const _Pending();
 
+    final passed = o.passed;
+    final needed = (o.total * 0.7).ceil();
+    final prompts = {for (final q in widget.questions) q.id: q.prompt};
+
+    return Scaffold(
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.all(Gap.md),
+                children: [
+                  const SizedBox(height: Gap.xl),
+                  SizedBox(
+                    height: 120,
+                    child: AnimatedBuilder(
+                      animation: _c,
+                      builder: (context, _) => CustomPaint(
+                          painter: _HandshakePainter(_c.value, passed),
+                          size: Size.infinite),
+                    ),
+                  ),
+                  const SizedBox(height: Gap.xl),
+                  FadeTransition(
+                    opacity: CurvedAnimation(
+                        parent: _c, curve: const Interval(0.75, 1)),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          passed ? 'Conexão estabelecida' : 'Conexão derrubada',
+                          style: Face.display.copyWith(
+                              color: passed ? Wire.ack.color : Wire.rst.color),
+                        ),
+                        const SizedBox(height: Gap.sm),
+                        Text(
+                          switch (o) {
+                            QuizOutcome(passed: true) =>
+                              '${o.correctCount} de ${o.total} corretas.',
+                            // Nota suficiente e mesmo assim reprovado: o piso de tempo do servidor.
+                            _ when o.correctCount >= needed =>
+                              'Respostas rápidas demais para contar. Refaça lendo com calma.',
+                            _ =>
+                              '${o.correctCount} de ${o.total} corretas. Você precisa de $needed para passar.',
+                          },
+                          style: Face.body.copyWith(color: Shade.textDim),
+                        ),
+                        const SizedBox(height: Gap.xl),
+                        Row(
+                          children: [
+                            Field(
+                              value: passed ? '+${o.xpAwarded}' : '0',
+                              label: 'XP',
+                              tone: passed ? Wire.ack.color : Shade.textFaint,
+                            ),
+                            const SizedBox(width: Gap.xl),
+                            Field(
+                                value: '${o.streakDays}',
+                                label: 'dias seguidos'),
+                            const SizedBox(width: Gap.xl),
+                            Field(
+                              value: '${o.hearts}',
+                              label: o.hearts == 1 ? 'vida' : 'vidas',
+                              tone: o.hearts <= 1 ? Wire.rst.color : null,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: Gap.xl),
+                        // Explicação em todas, inclusive nos acertos: acertar por sorte
+                        // e seguir adiante é pior do que errar.
+                        for (final f in o.perQuestion) ...[
+                          Text(prompts[f.questionId] ?? '',
+                              style: Face.body
+                                  .copyWith(fontWeight: FontWeight.w500)),
+                          const SizedBox(height: Gap.sm),
+                          _Explanation(
+                              text: f.explanation.isEmpty
+                                  ? (f.correct ? 'Correta.' : 'Incorreta.')
+                                  : f.explanation,
+                              right: f.correct),
+                          const SizedBox(height: Gap.lg),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(Gap.md),
+              child: Column(
+                children: [
+                  ActionButton(
+                    passed ? 'Continuar' : 'Tentar de novo',
+                    tone: passed ? Wire.ack.color : Wire.syn.color,
+                    onPressed: () => passed
+                        ? context.go('/')
+                        : context.pushReplacement('/quiz',
+                            extra: widget.lesson),
+                  ),
+                  if (!passed) ...[
+                    const SizedBox(height: Gap.sm),
+                    TextButton(
+                      onPressed: () => context.go('/'),
+                      child: Text('Voltar para a trilha',
+                          style: Face.meta.copyWith(color: Shade.textDim)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Enviado sem rede: a resposta está na fila e sobe sozinha.
+class _Pending extends StatelessWidget {
+  const _Pending();
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -72,74 +189,16 @@ class _ResultPageState extends State<ResultPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(),
-              SizedBox(
-                height: 120,
-                child: AnimatedBuilder(
-                  animation: _c,
-                  builder: (context, _) => CustomPaint(
-                      painter: _HandshakePainter(_c.value, _passed),
-                      size: Size.infinite),
-                ),
-              ),
-              const SizedBox(height: Gap.xl),
-              FadeTransition(
-                opacity:
-                    CurvedAnimation(parent: _c, curve: const Interval(0.75, 1)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _passed ? 'Conexão estabelecida' : 'Conexão derrubada',
-                      style: Face.display.copyWith(
-                          color: _passed ? Wire.ack.color : Wire.rst.color),
-                    ),
-                    const SizedBox(height: Gap.sm),
-                    Text(
-                      _passed
-                          ? '${widget.correct} de ${widget.total} corretas.'
-                          : '${widget.correct} de ${widget.total} corretas. '
-                              'Você precisa de ${(widget.total * 0.7).ceil()} para passar.',
-                      style: Face.body.copyWith(color: Shade.textDim),
-                    ),
-                    const SizedBox(height: Gap.xl),
-                    Row(
-                      children: [
-                        Field(
-                          value: _passed ? '+$xpGained' : '0',
-                          label: 'XP',
-                          tone: _passed ? Wire.ack.color : Shade.textFaint,
-                        ),
-                        const SizedBox(width: Gap.xl),
-                        Field(
-                            value: '${widget.demo.streak}',
-                            label: 'dias seguidos'),
-                        const SizedBox(width: Gap.xl),
-                        Field(
-                          value: '${widget.demo.hearts}',
-                          label: widget.demo.hearts == 1 ? 'vida' : 'vidas',
-                          tone: widget.demo.hearts <= 1 ? Wire.rst.color : null,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              Text('Respostas salvas', style: Face.display),
+              const SizedBox(height: Gap.sm),
+              Text(
+                'Sem conexão agora. O questionário é corrigido assim que a rede '
+                'voltar, e a trilha atualiza sozinha.',
+                style: Face.body.copyWith(color: Shade.textDim),
               ),
               const Spacer(),
-              ActionButton(
-                _passed ? 'Continuar' : 'Tentar de novo',
-                tone: _passed ? Wire.ack.color : Wire.syn.color,
-                onPressed: () => _passed ? context.go('/') : context.pop(),
-              ),
-              if (!_passed) ...[
-                const SizedBox(height: Gap.sm),
-                Center(
-                  child: TextButton(
-                    onPressed: () => context.go('/'),
-                    child: Text('Voltar para a trilha',
-                        style: Face.meta.copyWith(color: Shade.textDim)),
-                  ),
-                ),
-              ],
+              ActionButton('Voltar para a trilha',
+                  onPressed: () => context.go('/')),
             ],
           ),
         ),
@@ -227,4 +286,26 @@ class _HandshakePainter extends CustomPainter {
   @override
   bool shouldRepaint(_HandshakePainter old) =>
       old.t != t || old.passed != passed;
+}
+
+class _Explanation extends StatelessWidget {
+  const _Explanation({required this.text, required this.right});
+  final String text;
+  final bool right;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(Gap.md),
+      decoration: BoxDecoration(
+        color: Shade.surfaceLow,
+        borderRadius: BorderRadius.circular(8),
+        border: Border(
+          left: BorderSide(
+              color: right ? Wire.ack.color : Wire.rst.color, width: 3),
+        ),
+      ),
+      child: Text(text, style: Face.body.copyWith(color: Shade.textDim)),
+    );
+  }
 }

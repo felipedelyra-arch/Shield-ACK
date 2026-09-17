@@ -4,4 +4,10 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <application>
+        <!-- Sem google-services.json (modo emulador) o plugin do Crashlytics não gera
+             o build ID e o SDK derruba o app na abertura. Só em debug. -->
+        <meta-data android:name="com.crashlytics.RequireBuildId" android:value="false"/>
+    </application>
 </manifest>

@@ -15,53 +15,67 @@ import { docId, uid as uidSchema } from '../domain/schemas';
  */
 const FORBIDDEN_FIELDS = ['correct', 'answer', 'correctIndex', 'solution', 'gabarito'];
 
+/** Monta a árvore do catálogo a partir das coleções-fonte. Exportada para o seed do emulador. */
+export async function buildCatalog(): Promise<{ tracks: unknown[]; leaks: string[] }> {
+  const tracks = await db.collection('tracks').orderBy('order').limit(200).get();
+  const out: unknown[] = [];
+  const leaks: string[] = [];
+
+  for (const t of tracks.docs) {
+    const modules = await t.ref.collection('modules').orderBy('order').limit(100).get();
+    const mOut = [];
+
+    for (const m of modules.docs) {
+      const lessonIds = (m.get('lessonIds') as string[]) ?? [];
+      const lessons = lessonIds.length
+        ? await db.getAll(...lessonIds.map((id) => db.collection('lessons').doc(id)))
+        : [];
+
+      for (const l of lessons) {
+        if (!l.exists) continue;
+        const qs = await l.ref.collection('questions').limit(50).get();
+        for (const q of qs.docs) {
+          const keys = Object.keys(q.data());
+          const bad = keys.filter((k) => FORBIDDEN_FIELDS.includes(k));
+          if (bad.length) leaks.push(`${l.id}/${q.id}:${bad.join(',')}`);
+        }
+      }
+
+      mOut.push({
+        id: m.id,
+        title: m.get('title'),
+        order: m.get('order'),
+        lessons: lessons
+          .filter((l) => l.exists)
+          .map((l) => ({
+            id: l.id,
+            title: l.get('title'),
+            order: l.get('order'),
+            durationSec: l.get('durationSec'),
+            xpReward: l.get('xpReward'),
+            thumbUrl: l.get('thumbUrl') ?? null,
+            // videoAssetId NÃO entra no catálogo. URL só via getLessonPlayback().
+          })),
+      });
+    }
+
+    out.push({
+      id: t.id,
+      title: t.get('title'),
+      blurb: t.get('blurb') ?? '',
+      level: t.get('level'),
+      order: t.get('order'),
+      modules: mOut,
+    });
+  }
+
+  return { tracks: out, leaks };
+}
+
 export const publishCatalog = guarded(
   { action: 'publishCatalog', schema: z.object({}), requireRole: 'admin', limit: { max: 10, windowSec: 3600 } },
   async (_data, ctx) => {
-    const tracks = await db.collection('tracks').orderBy('order').limit(200).get();
-    const out: unknown[] = [];
-    const leaks: string[] = [];
-
-    for (const t of tracks.docs) {
-      const modules = await t.ref.collection('modules').orderBy('order').limit(100).get();
-      const mOut = [];
-
-      for (const m of modules.docs) {
-        const lessonIds = (m.get('lessonIds') as string[]) ?? [];
-        const lessons = lessonIds.length
-          ? await db.getAll(...lessonIds.map((id) => db.collection('lessons').doc(id)))
-          : [];
-
-        for (const l of lessons) {
-          if (!l.exists) continue;
-          const qs = await l.ref.collection('questions').limit(50).get();
-          for (const q of qs.docs) {
-            const keys = Object.keys(q.data());
-            const bad = keys.filter((k) => FORBIDDEN_FIELDS.includes(k));
-            if (bad.length) leaks.push(`${l.id}/${q.id}:${bad.join(',')}`);
-          }
-        }
-
-        mOut.push({
-          id: m.id,
-          title: m.get('title'),
-          order: m.get('order'),
-          lessons: lessons
-            .filter((l) => l.exists)
-            .map((l) => ({
-              id: l.id,
-              title: l.get('title'),
-              order: l.get('order'),
-              durationSec: l.get('durationSec'),
-              xpReward: l.get('xpReward'),
-              thumbUrl: l.get('thumbUrl') ?? null,
-              // videoAssetId NÃO entra no catálogo. URL só via getLessonPlayback().
-            })),
-        });
-      }
-
-      out.push({ id: t.id, title: t.get('title'), level: t.get('level'), order: t.get('order'), modules: mOut });
-    }
+    const { tracks: out, leaks } = await buildCatalog();
 
     if (leaks.length) {
       await audit('catalog_publish_blocked_leak', ctx.uid, 'critical', { count: leaks.length });

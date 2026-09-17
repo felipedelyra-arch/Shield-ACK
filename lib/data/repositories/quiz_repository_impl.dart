@@ -1,13 +1,47 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../../core/error/failure.dart';
 import '../../core/error/result.dart';
+import '../../domain/entities/learning.dart';
 import '../../domain/entities/quiz_submission.dart';
 import '../../domain/repositories/quiz_repository.dart';
+import '../datasources/local/app_database.dart';
 import '../datasources/local/outbox.dart';
+import 'firestore_failure.dart';
 
 class QuizRepositoryImpl implements QuizRepository {
-  QuizRepositoryImpl(this._outbox);
+  QuizRepositoryImpl(this._outbox, this._db);
 
   final Outbox _outbox;
+  final FirebaseFirestore _db;
+
+  @override
+  Future<Result<Failure, List<Question>>> questions(String lessonId) =>
+      guardFirestore(() async {
+        // Sem orderBy: ele esconderia questões sem `order`, e o servidor recusa
+        // submissão que não responde todas (INCOMPLETE_ANSWERS).
+        final snap =
+            await _db.collection('lessons/$lessonId/questions').limit(20).get();
+        final docs = [...snap.docs]..sort((a, b) =>
+            ((a.data()['order'] as int?) ?? 0)
+                .compareTo((b.data()['order'] as int?) ?? 0));
+        return docs.map(_question).toList(growable: false);
+      });
+
+  Question _question(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+    final m = d.data();
+    final type = QuestionType.values.asNameMap()[m['type']];
+    // Tipo desconhecido não pode ser pulado: a lição ficaria impossível de enviar.
+    if (type == null) throw StateError('question_type:${m['type']}');
+    return Question(
+      id: d.id,
+      type: type,
+      prompt: m['prompt'] as String,
+      options: List<String>.from(m['options'] as List? ?? const []),
+      prompts: List<String>.from(m['prompts'] as List? ?? const []),
+      code: m['code'] as String?,
+    );
+  }
 
   /// Submissão SEMPRE passa pelo outbox — inclusive online.
   ///
@@ -25,25 +59,29 @@ class QuizRepositoryImpl implements QuizRepository {
           .toList(growable: false),
     });
 
-    // A fila já tentou drenar em `enqueue`. Se o resultado chegou, devolvemos o
-    // real; se não, devolvemos um outcome `pending` e a tela mostra "sincronizando".
-    final data = await _outbox.resultFor(key);
-    if (data == null) {
-      return Ok(QuizOutcome(
-        passed: false,
-        score: 0,
-        correctCount: 0,
-        total: s.answers.length,
-        xpAwarded: 0,
-        totalXp: 0,
-        level: 0,
-        hearts: 0,
-        streakDays: 0,
-        perQuestion: const [],
-        pending: true,
-      ));
-    }
-    return Ok(_map(data));
+    // Espera a tentativa imediata: `enqueue` só a dispara, e `drain` coalesce com ela.
+    await _outbox.drain();
+    final item = await _outbox.find(key);
+
+    return switch (item?.status) {
+      'done' => Ok(_map(item!.resultMap!)),
+      // Recusa definitiva do servidor (NO_HEARTS, LESSON_LOCKED…): não adianta esperar.
+      'dead' => Err(DeniedFailure(item!.lastError ?? '')),
+      // Sem rede: ficou na fila e sobe sozinho.
+      _ => Ok(QuizOutcome(
+          passed: false,
+          score: 0,
+          correctCount: 0,
+          total: s.answers.length,
+          xpAwarded: 0,
+          totalXp: 0,
+          level: 0,
+          hearts: 0,
+          streakDays: 0,
+          perQuestion: const [],
+          pending: true,
+        )),
+    };
   }
 
   @override

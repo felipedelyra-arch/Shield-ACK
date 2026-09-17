@@ -1,7 +1,8 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:workmanager/workmanager.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/firebase/firebase_bootstrap.dart';
+import '../../../main.dart' show emulatorHost, isProd;
 
 const outboxTaskName = 'shieldack.outbox.drain';
 
@@ -21,7 +22,9 @@ void outboxCallbackDispatcher() {
   Workmanager().executeTask((task, _) async {
     if (task != outboxTaskName) return true;
     try {
-      await Firebase.initializeApp();
+      // Mesmo bootstrap do app: sem App Check ativo, toda Callable em prod responde
+      // APP_CHECK_REQUIRED e o item morre depois de 8 tentativas.
+      await FirebaseBootstrap.init(isProd: isProd, emulatorHost: emulatorHost);
       final container = await buildHeadlessContainer();
       await container.read(outboxProvider).drain();
       container.dispose();

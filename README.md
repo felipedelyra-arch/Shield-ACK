@@ -38,8 +38,9 @@ npm --prefix functions run build
 firebase emulators:start
 
 # Testes
-npm --prefix functions run test:local          # lógica pura (15 testes)
-cd test/rules && npm ci && npm test            # Security Rules (33 casos)
+npm --prefix functions run test:local          # lógica pura
+npm --prefix functions test                    # lógica + integração no emulador
+cd test/rules && npm ci && npm test            # Security Rules
 flutter test
 ./scripts/check_layering.sh                    # fronteiras de camada
 ```
@@ -82,10 +83,9 @@ Teste de carga roda só em staging.
    banco nasce em claro — por isso `app_database.dart` valida
    `PRAGMA cipher_version` e lança.
 
-## Ver a interface no celular (modo demo)
+## Ver só a interface (modo demo)
 
-O app ainda não tem `firebase_options.dart` real, então existe um modo que roda
-**só a interface**, com dados em memória:
+Roda **só a interface**, com dados em memória e sem Firebase:
 
 ```bash
 flutter run --dart-define=SHIELDACK_ENV=demo
@@ -95,6 +95,34 @@ Esse modo desliga App Check, Crashlytics, banco local e outbox — ou seja, toda
 camada de segurança. Um `assert` em `main.dart` impede que ele coexista com
 `SHIELDACK_ENV=prod`, e o gabarito do questionário fica em `lib/demo/`
 justamente para deixar claro que aquilo **nunca** vive no cliente em produção.
+
+## Rodar o app real contra o emulador do Firebase
+
+Sem projeto Firebase ainda, o app **de verdade** (login, Rules, Callables, outbox,
+banco cifrado) roda contra o Firebase Emulator Suite. Só App Check e Crashlytics
+ficam de fora, porque dependem da nuvem.
+
+```bash
+# 1. Emulador (Java 21) — deixe este terminal aberto
+export JAVA_HOME=~/Android/jdk21 PATH=~/Android/jdk21/bin:$PATH
+npm --prefix functions run build
+firebase emulators:start --project=demo-shieldack --only auth,firestore,functions,database
+
+# 2. Em outro terminal: trilhas, aulas e questões de exemplo em catalog/v1
+npm --prefix functions run seed
+
+# 3. Celular no cabo: as portas do PC aparecem como 127.0.0.1 no aparelho
+for p in 9099 8080 5001 9000; do adb reverse tcp:$p tcp:$p; done
+flutter run --flavor dev --dart-define=EMULATOR_HOST=127.0.0.1
+```
+
+Crie a conta com **e-mail e senha**. O login com Google precisa do projeto real
+(`flutterfire configure`). A UI do emulador em http://127.0.0.1:4000 mostra os
+usuários, o progresso e o XP gravados pelas Functions.
+
+`EMULATOR_HOST` só funciona em build de debug: o HTTP em claro para 127.0.0.1 está
+liberado apenas em `android/app/src/debug/`, e o app recusa subir com
+`EMULATOR_HOST` em `SHIELDACK_ENV=prod`.
 
 ### Conectar o aparelho por USB
 

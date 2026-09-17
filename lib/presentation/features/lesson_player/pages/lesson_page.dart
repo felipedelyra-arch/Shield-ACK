@@ -1,33 +1,70 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../demo/demo_state.dart';
+import '../../../../core/di/providers.dart';
+import '../../../../domain/entities/learning.dart';
+import '../../../../domain/repositories/learning_repository.dart';
+import '../../../failure_text.dart';
 import '../../../theme.dart';
 import '../../../widgets/trace.dart';
 
 /// Player da aula.
 ///
-/// Em produção, `SecureScreen` embrulha esta tela (FLAG_SECURE no Android) e a
-/// URL vem de `getLessonPlayback()` com token de 120s. Na demo o vídeo é um
-/// retângulo — o que está sendo avaliado aqui é o enquadramento, a retomada de
-/// posição e o caminho para o questionário.
-class LessonPage extends StatefulWidget {
+/// Abrir a tela chama `startLesson`: é o servidor que autoriza, e sem essa chamada
+/// o `submitQuiz` responde LESSON_LOCKED. O vídeo ainda é um retângulo — o player
+/// HLS com `getLessonPlayback()` e `SecureScreen` é a próxima etapa.
+class LessonPage extends ConsumerStatefulWidget {
   const LessonPage({required this.lesson, super.key});
-  final DemoLesson lesson;
+  final Lesson lesson;
 
   @override
-  State<LessonPage> createState() => _LessonPageState();
+  ConsumerState<LessonPage> createState() => _LessonPageState();
 }
 
-class _LessonPageState extends State<LessonPage> {
-  late double _pos = widget.lesson.progress;
+class _LessonPageState extends ConsumerState<LessonPage> {
+  // Guardado no initState: `ref` não pode ser usado no dispose.
+  late final LearningRepository _repo = ref.read(learningRepositoryProvider);
+  late int _atSec = widget.lesson.resumeAtSec;
+  late int _reportedSec = widget.lesson.resumeAtSec;
+  bool _authorized = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _repo.startLesson(widget.lesson.id).then((r) {
+      if (!mounted) return;
+      setState(() => r.fold(
+            (f) => _error = failureText(f),
+            (resumeAt) {
+              _authorized = true;
+              if (resumeAt > _atSec) _atSec = resumeAt;
+            },
+          ));
+    });
+  }
+
+  @override
+  void dispose() {
+    _flushWatch();
+    super.dispose();
+  }
+
+  /// Envia só o que avançou desde o último envio; o servidor guarda o máximo.
+  void _flushWatch() {
+    if (!_authorized || _atSec <= _reportedSec) return;
+    _repo.reportWatch(widget.lesson.id, _atSec, _atSec - _reportedSec);
+    _reportedSec = _atSec;
+  }
 
   String _mmss(int s) => '${s ~/ 60}:${(s % 60).toString().padLeft(2, '0')}';
 
   @override
   Widget build(BuildContext context) {
     final l = widget.lesson;
-    final atSec = (l.durationSec * _pos).round();
+    final pos = l.durationSec == 0 ? 0.0 : _atSec / l.durationSec;
+    final canQuiz = _authorized && pos >= 0.9;
 
     return Scaffold(
       appBar: AppBar(
@@ -50,8 +87,10 @@ class _LessonPageState extends State<LessonPage> {
                   color: Shade.text,
                   icon: const Icon(Icons.play_circle_outline),
                   // Avança a posição para dar para exercitar a retomada.
-                  onPressed: () =>
-                      setState(() => _pos = (_pos + 0.25).clamp(0, 1)),
+                  onPressed: _authorized
+                      ? () => setState(() => _atSec =
+                          (_atSec + l.durationSec ~/ 4).clamp(0, l.durationSec))
+                      : null,
                 ),
               ),
             ),
@@ -61,7 +100,7 @@ class _LessonPageState extends State<LessonPage> {
                 horizontal: Gap.md, vertical: Gap.sm),
             child: Row(
               children: [
-                Text(_mmss(atSec), style: Face.figure.copyWith(fontSize: 13)),
+                Text(_mmss(_atSec), style: Face.figure.copyWith(fontSize: 13)),
                 const SizedBox(width: Gap.sm),
                 Expanded(
                   child: SliderTheme(
@@ -75,8 +114,11 @@ class _LessonPageState extends State<LessonPage> {
                       overlayShape: SliderComponentShape.noOverlay,
                     ),
                     child: Slider(
-                      value: _pos,
-                      onChanged: (v) => setState(() => _pos = v),
+                      value: pos.clamp(0.0, 1.0),
+                      onChanged: _authorized
+                          ? (v) => setState(
+                              () => _atSec = (v * l.durationSec).round())
+                          : null,
                     ),
                   ),
                 ),
@@ -93,6 +135,11 @@ class _LessonPageState extends State<LessonPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  if (_error != null) ...[
+                    Text(_error!,
+                        style: Face.body.copyWith(color: Wire.rst.color)),
+                    const SizedBox(height: Gap.md),
+                  ],
                   Text(l.title, style: Face.title),
                   const SizedBox(height: Gap.md),
                   Text(
@@ -111,13 +158,18 @@ class _LessonPageState extends State<LessonPage> {
             child: Padding(
               padding: const EdgeInsets.all(Gap.md),
               child: ActionButton(
-                _pos >= 0.9
+                canQuiz
                     ? 'Responder questionário'
                     : 'Assistir até o fim para liberar',
+                busy: !_authorized && _error == null,
                 // O desbloqueio real acontece na Function; aqui é só a UI
                 // refletindo a mesma regra.
-                onPressed:
-                    _pos >= 0.9 ? () => context.push('/quiz', extra: l) : null,
+                onPressed: canQuiz
+                    ? () {
+                        _flushWatch();
+                        context.push('/quiz', extra: l);
+                      }
+                    : null,
               ),
             ),
           ),

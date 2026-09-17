@@ -11,6 +11,8 @@ import 'core/security/security_service.dart';
 import 'core/security/session_guard.dart';
 import 'data/datasources/local/app_database.dart';
 import 'data/datasources/local/outbox_worker.dart';
+import 'demo/demo_repositories.dart';
+import 'demo/demo_state.dart';
 import 'app.dart';
 
 /// Flavor injetado no build: --dart-define=SHIELDACK_ENV=prod
@@ -25,6 +27,10 @@ const isProd = _env == 'prod';
 /// coexistir com um build de produção.
 const isDemo = _env == 'demo';
 
+/// Host do Firebase Emulator Suite, para rodar o app real sem projeto Firebase.
+/// No celular por cabo: `adb reverse` nas portas e EMULATOR_HOST=127.0.0.1.
+const emulatorHost = String.fromEnvironment('EMULATOR_HOST');
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -33,13 +39,19 @@ Future<void> main() async {
   assert(!(isDemo && isProd),
       'SHIELDACK_ENV=demo nunca pode ser build de produção');
 
+  // Fora de assert: assert some no build de release, e é justamente nele que isto importa.
+  if (isProd && emulatorHost.isNotEmpty) {
+    throw StateError('EMULATOR_HOST nunca pode ir para produção');
+  }
+
   if (isDemo) {
     // Só a interface. Nenhum Firebase, nenhum Keystore, nenhum banco.
-    runApp(const ProviderScope(child: ShieldAckApp()));
+    runApp(ProviderScope(
+        overrides: demoOverrides(DemoState()), child: const ShieldAckApp()));
     return;
   }
 
-  await FirebaseBootstrap.init(isProd: isProd);
+  await FirebaseBootstrap.init(isProd: isProd, emulatorHost: emulatorHost);
 
   // Chave do banco vem do Keystore/Keychain ANTES de qualquer abertura de banco.
   final security = SecurityService();
