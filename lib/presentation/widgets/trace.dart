@@ -41,7 +41,9 @@ class TraceSegment extends StatelessWidget {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.only(
-                  right: Gap.md, top: Gap.md, bottom: Gap.md,
+                  right: Gap.md,
+                  top: Gap.md,
+                  bottom: Gap.md,
                 ),
                 child: child,
               ),
@@ -60,7 +62,8 @@ class _RulePainter extends CustomPainter {
   final bool first;
   final bool last;
 
-  static const _cy = 28.0; // centro do nó, alinhado com a primeira linha do título
+  static const _cy =
+      28.0; // centro do nó, alinhado com a primeira linha do título
   static const _r = 6.0;
 
   @override
@@ -72,7 +75,9 @@ class _RulePainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     if (!first) canvas.drawLine(Offset(x, 0), Offset(x, _cy - _r - 3), rule);
-    if (!last) canvas.drawLine(Offset(x, _cy + _r + 3), Offset(x, size.height), rule);
+    if (!last) {
+      canvas.drawLine(Offset(x, _cy + _r + 3), Offset(x, size.height), rule);
+    }
 
     final c = Offset(x, _cy);
     switch (state) {
@@ -82,12 +87,15 @@ class _RulePainter extends CustomPainter {
       // SYN: meio preenchido — enviado, aguardando resposta.
       case Wire.syn:
         canvas
-          ..drawCircle(c, _r, Paint()
-            ..color = state.color
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2)
-          ..drawArc(Rect.fromCircle(center: c, radius: _r - 1), -1.5708, 3.1416, true,
-              Paint()..color = state.color);
+          ..drawCircle(
+              c,
+              _r,
+              Paint()
+                ..color = state.color
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2)
+          ..drawArc(Rect.fromCircle(center: c, radius: _r - 1), -1.5708, 3.1416,
+              true, Paint()..color = state.color);
       // RST: cruz — a conexão foi derrubada.
       case Wire.rst:
         final p = Paint()
@@ -99,10 +107,13 @@ class _RulePainter extends CustomPainter {
           ..drawLine(c + const Offset(4, -4), c + const Offset(-4, 4), p);
       // Ainda não alcançado: contorno apagado.
       case Wire.idle:
-        canvas.drawCircle(c, _r, Paint()
-          ..color = Shade.rule
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2);
+        canvas.drawCircle(
+            c,
+            _r,
+            Paint()
+              ..color = Shade.rule
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2);
     }
   }
 
@@ -126,8 +137,11 @@ class Field extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: Face.figure.copyWith(fontSize: 19, color: tone ?? Shade.text)),
-        Text(label, style: Face.meta.copyWith(fontSize: 12, color: Shade.textFaint)),
+        Text(value,
+            style:
+                Face.figure.copyWith(fontSize: 19, color: tone ?? Shade.text)),
+        Text(label,
+            style: Face.meta.copyWith(fontSize: 12, color: Shade.textFaint)),
       ],
     );
   }
@@ -136,7 +150,8 @@ class Field extends StatelessWidget {
 /// Botão de ação. Um só estilo primário no app inteiro — quando tudo pode ser
 /// enfatizado, nada é.
 class ActionButton extends StatelessWidget {
-  const ActionButton(this.label, {required this.onPressed, this.tone, this.busy = false, super.key});
+  const ActionButton(this.label,
+      {required this.onPressed, this.tone, this.busy = false, super.key});
 
   final String label;
   final VoidCallback? onPressed;
@@ -159,8 +174,10 @@ class ActionButton extends StatelessWidget {
           child: Center(
             child: busy
                 ? const SizedBox(
-                    width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Shade.textDim))
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Shade.textDim))
                 : Text(label,
                     style: Face.body.copyWith(
                       fontWeight: FontWeight.w600,

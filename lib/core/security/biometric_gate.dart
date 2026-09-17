@@ -7,7 +7,8 @@ import 'package:local_auth/local_auth.dart';
 /// Um PIN caseiro significaria nós guardando e comparando um segredo de 4–6 dígitos
 /// — pior que o Keystore em todos os aspectos. Ver docs/00-CORRECOES.md C10.
 class BiometricGate {
-  BiometricGate({LocalAuthentication? auth}) : _auth = auth ?? LocalAuthentication();
+  BiometricGate({LocalAuthentication? auth})
+      : _auth = auth ?? LocalAuthentication();
 
   final LocalAuthentication _auth;
 
@@ -27,7 +28,8 @@ class BiometricGate {
         // local_auth 3 achatou os parâmetros: `stickyAuth` virou
         // `persistAcrossBackgrounding` e `useErrorDialogs` deixou de existir.
         biometricOnly: false,
-        persistAcrossBackgrounding: true, // sobrevive ao app ir para background no prompt
+        persistAcrossBackgrounding:
+            true, // sobrevive ao app ir para background no prompt
         sensitiveTransaction: true,
       );
       return ok ? BiometricOutcome.granted : BiometricOutcome.denied;

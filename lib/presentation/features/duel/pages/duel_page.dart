@@ -20,7 +20,8 @@ class DuelPage extends StatelessWidget {
         appBar: AppBar(title: const Text('Duelos')),
         body: demo.duels.isEmpty
             ? Empty(
-                headline: 'Nenhum duelo em aberto.\nDesafie alguém da sua lista.',
+                headline:
+                    'Nenhum duelo em aberto.\nDesafie alguém da sua lista.',
                 action: ActionButton('Escolher adversário', onPressed: () {}),
               )
             : ListView(
@@ -39,7 +40,8 @@ class DuelPage extends StatelessWidget {
                     ),
                   Padding(
                     padding: const EdgeInsets.all(Gap.md),
-                    child: ActionButton('Novo duelo', tone: Shade.surface, onPressed: () {}),
+                    child: ActionButton('Novo duelo',
+                        tone: Shade.surface, onPressed: () {}),
                   ),
                 ],
               ),
@@ -53,9 +55,18 @@ class _DuelRow extends StatelessWidget {
   final DemoDuel duel;
 
   ({String text, Color tone}) get _status => switch (duel.turn) {
-        DuelTurn.yours => (text: 'Sua vez · rodada ${duel.round} de 5', tone: Wire.syn.color),
-        DuelTurn.theirs => (text: 'Aguardando ${duel.opponent}', tone: Shade.textFaint),
-        DuelTurn.invite => (text: '${duel.opponent} te desafiou', tone: Wire.ack.color),
+        DuelTurn.yours => (
+            text: 'Sua vez · rodada ${duel.round} de 5',
+            tone: Wire.syn.color
+          ),
+        DuelTurn.theirs => (
+            text: 'Aguardando ${duel.opponent}',
+            tone: Shade.textFaint
+          ),
+        DuelTurn.invite => (
+            text: '${duel.opponent} te desafiou',
+            tone: Wire.ack.color
+          ),
       };
 
   @override
@@ -69,7 +80,8 @@ class _DuelRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(s.text,
-                  style: Face.meta.copyWith(color: s.tone, fontWeight: FontWeight.w500)),
+                  style: Face.meta
+                      .copyWith(color: s.tone, fontWeight: FontWeight.w500)),
               const SizedBox(height: 2),
               Text(duel.opponent,
                   style: Face.body.copyWith(fontWeight: FontWeight.w500)),
@@ -86,12 +98,17 @@ class _DuelRow extends StatelessWidget {
                 Text('${duel.myScore}',
                     style: Face.figure.copyWith(
                         fontSize: 22,
-                        color: duel.myScore >= duel.theirScore ? Shade.text : Shade.textDim)),
-                Text('  ·  ', style: Face.meta.copyWith(color: Shade.textFaint)),
+                        color: duel.myScore >= duel.theirScore
+                            ? Shade.text
+                            : Shade.textDim)),
+                Text('  ·  ',
+                    style: Face.meta.copyWith(color: Shade.textFaint)),
                 Text('${duel.theirScore}',
                     style: Face.figure.copyWith(
                         fontSize: 22,
-                        color: duel.theirScore > duel.myScore ? Shade.text : Shade.textDim)),
+                        color: duel.theirScore > duel.myScore
+                            ? Shade.text
+                            : Shade.textDim)),
               ],
             ),
           ),

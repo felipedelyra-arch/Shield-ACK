@@ -35,7 +35,8 @@ class _LessonPageState extends State<LessonPage> {
           icon: const Icon(Icons.close),
           onPressed: () => context.pop(),
         ),
-        title: Text(l.title, style: Face.body.copyWith(fontWeight: FontWeight.w500)),
+        title: Text(l.title,
+            style: Face.body.copyWith(fontWeight: FontWeight.w500)),
       ),
       body: Column(
         children: [
@@ -49,13 +50,15 @@ class _LessonPageState extends State<LessonPage> {
                   color: Shade.text,
                   icon: const Icon(Icons.play_circle_outline),
                   // Avança a posição para dar para exercitar a retomada.
-                  onPressed: () => setState(() => _pos = (_pos + 0.25).clamp(0, 1)),
+                  onPressed: () =>
+                      setState(() => _pos = (_pos + 0.25).clamp(0, 1)),
                 ),
               ),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: Gap.sm),
+            padding: const EdgeInsets.symmetric(
+                horizontal: Gap.md, vertical: Gap.sm),
             child: Row(
               children: [
                 Text(_mmss(atSec), style: Face.figure.copyWith(fontSize: 13)),
@@ -67,7 +70,8 @@ class _LessonPageState extends State<LessonPage> {
                       activeTrackColor: Wire.ack.color,
                       inactiveTrackColor: Shade.rule,
                       thumbColor: Wire.ack.color,
-                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                      thumbShape:
+                          const RoundSliderThumbShape(enabledThumbRadius: 6),
                       overlayShape: SliderComponentShape.noOverlay,
                     ),
                     child: Slider(
@@ -78,7 +82,8 @@ class _LessonPageState extends State<LessonPage> {
                 ),
                 const SizedBox(width: Gap.sm),
                 Text(_mmss(l.durationSec),
-                    style: Face.figure.copyWith(fontSize: 13, color: Shade.textDim)),
+                    style: Face.figure
+                        .copyWith(fontSize: 13, color: Shade.textDim)),
               ],
             ),
           ),
@@ -106,10 +111,13 @@ class _LessonPageState extends State<LessonPage> {
             child: Padding(
               padding: const EdgeInsets.all(Gap.md),
               child: ActionButton(
-                _pos >= 0.9 ? 'Responder questionário' : 'Assistir até o fim para liberar',
+                _pos >= 0.9
+                    ? 'Responder questionário'
+                    : 'Assistir até o fim para liberar',
                 // O desbloqueio real acontece na Function; aqui é só a UI
                 // refletindo a mesma regra.
-                onPressed: _pos >= 0.9 ? () => context.push('/quiz', extra: l) : null,
+                onPressed:
+                    _pos >= 0.9 ? () => context.push('/quiz', extra: l) : null,
               ),
             ),
           ),

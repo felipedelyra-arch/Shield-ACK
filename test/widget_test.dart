@@ -13,7 +13,8 @@ import 'package:shieldack/presentation/theme.dart';
 Widget _wrap(Widget child) => MaterialApp(theme: buildTheme(), home: child);
 
 void main() {
-  testWidgets('trilha lista as aulas e mostra o ponto de retomada', (tester) async {
+  testWidgets('trilha lista as aulas e mostra o ponto de retomada',
+      (tester) async {
     final demo = DemoState();
     await tester.pumpWidget(_wrap(TracksPage(demo: demo)));
 
@@ -71,7 +72,8 @@ void main() {
 
   test('reprovar consome vida e não credita XP', () {
     final demo = DemoState();
-    final lesson = demo.tracks.first.lessons.firstWhere((l) => l.state == Wire.syn);
+    final lesson =
+        demo.tracks.first.lessons.firstWhere((l) => l.state == Wire.syn);
     final xpBefore = demo.xp;
     final heartsBefore = demo.hearts;
 

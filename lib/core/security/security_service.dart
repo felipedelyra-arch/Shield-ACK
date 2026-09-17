@@ -48,7 +48,8 @@ class SecurityService {
     }
 
     final rnd = Random.secure();
-    final key = Uint8List.fromList(List<int>.generate(32, (_) => rnd.nextInt(256)));
+    final key =
+        Uint8List.fromList(List<int>.generate(32, (_) => rnd.nextInt(256)));
     await _storage.write(key: _dbKeyAlias, value: base64Encode(key));
     return key;
   }

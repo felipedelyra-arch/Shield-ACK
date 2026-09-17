@@ -46,7 +46,8 @@ class _QuizPageState extends State<QuizPage> {
         correct: _correct,
         total: demoQuestions.length,
       );
-      context.pushReplacement('/result', extra: (_correct, demoQuestions.length, widget.lesson));
+      context.pushReplacement('/result',
+          extra: (_correct, demoQuestions.length, widget.lesson));
       return;
     }
     setState(() {
@@ -60,7 +61,8 @@ class _QuizPageState extends State<QuizPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(icon: const Icon(Icons.close), onPressed: () => context.pop()),
+        leading: IconButton(
+            icon: const Icon(Icons.close), onPressed: () => context.pop()),
         title: Text('${_index + 1} de ${demoQuestions.length}',
             style: Face.figure.copyWith(color: Shade.textDim)),
         bottom: PreferredSize(
@@ -90,7 +92,8 @@ class _QuizPageState extends State<QuizPage> {
                         border: Border.all(color: Shade.rule),
                       ),
                       child: Text(_q.code!,
-                          style: Face.code.copyWith(fontSize: 12, color: Shade.textDim)),
+                          style: Face.code
+                              .copyWith(fontSize: 12, color: Shade.textDim)),
                     ),
                     const SizedBox(height: Gap.lg),
                   ],
@@ -105,11 +108,13 @@ class _QuizPageState extends State<QuizPage> {
                           : i == _q.correct
                               ? Wire.ack
                               : (_picked == i ? Wire.rst : null),
-                      onTap: _revealed ? null : () => setState(() => _picked = i),
+                      onTap:
+                          _revealed ? null : () => setState(() => _picked = i),
                     ),
                   if (_revealed) ...[
                     const SizedBox(height: Gap.md),
-                    _Explanation(text: _q.explanation, right: _picked == _q.correct),
+                    _Explanation(
+                        text: _q.explanation, right: _picked == _q.correct),
                   ],
                 ],
               ),
@@ -117,8 +122,10 @@ class _QuizPageState extends State<QuizPage> {
             Padding(
               padding: const EdgeInsets.all(Gap.md),
               child: _revealed
-                  ? ActionButton(_isLast ? 'Ver resultado' : 'Próxima', onPressed: _next)
-                  : ActionButton('Confirmar', onPressed: _picked == null ? null : _confirm),
+                  ? ActionButton(_isLast ? 'Ver resultado' : 'Próxima',
+                      onPressed: _next)
+                  : ActionButton('Confirmar',
+                      onPressed: _picked == null ? null : _confirm),
             ),
           ],
         ),
@@ -128,7 +135,11 @@ class _QuizPageState extends State<QuizPage> {
 }
 
 class _Option extends StatelessWidget {
-  const _Option({required this.label, required this.selected, required this.state, this.onTap});
+  const _Option(
+      {required this.label,
+      required this.selected,
+      required this.state,
+      this.onTap});
 
   final String label;
   final bool selected;
@@ -149,10 +160,12 @@ class _Option extends StatelessWidget {
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: Gap.md, vertical: 14),
+            padding:
+                const EdgeInsets.symmetric(horizontal: Gap.md, vertical: 14),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: border, width: selected || tone != null ? 1.5 : 1),
+              border: Border.all(
+                  color: border, width: selected || tone != null ? 1.5 : 1),
             ),
             child: Row(
               children: [
@@ -186,7 +199,8 @@ class _Explanation extends StatelessWidget {
         color: Shade.surfaceLow,
         borderRadius: BorderRadius.circular(8),
         border: Border(
-          left: BorderSide(color: right ? Wire.ack.color : Wire.rst.color, width: 3),
+          left: BorderSide(
+              color: right ? Wire.ack.color : Wire.rst.color, width: 3),
         ),
       ),
       child: Text(text, style: Face.body.copyWith(color: Shade.textDim)),

@@ -22,10 +22,13 @@ Especificação: `docs/00-PROMPT-MESTRE.md`. Estrutura: `docs/02-estrutura.md`. 
 ## Antes de commitar
 
 ```sh
-flutter analyze && dart format --set-exit-if-changed lib test
+dart analyze && dart format --set-exit-if-changed lib test && flutter test
 scripts/check_layering.sh
 npm --prefix functions run lint && npm --prefix functions run build
-npm --prefix functions test          # emulador
+export JAVA_HOME=~/Android/jdk21 PATH=~/Android/jdk21/bin:$PATH   # emulador exige Java 21
+npm --prefix functions test && npm --prefix test/rules test
 ```
+
+`flutter analyze` quebra com o "Á" de "Área de trabalho" no caminho (bug do LSP do Dart); `dart analyze` faz a mesma análise.
 
 Commits e docs em português.

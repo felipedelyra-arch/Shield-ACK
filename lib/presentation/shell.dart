@@ -44,22 +44,27 @@ class _ShellState extends State<Shell> {
         labelTextStyle: WidgetStateProperty.resolveWith(
           (s) => Face.meta.copyWith(
             fontSize: 11,
-            color: s.contains(WidgetState.selected) ? Shade.text : Shade.textFaint,
+            color:
+                s.contains(WidgetState.selected) ? Shade.text : Shade.textFaint,
           ),
         ),
         destinations: const [
           NavigationDestination(
-            icon: Icon(Icons.timeline_outlined), selectedIcon: Icon(Icons.timeline),
-            label: 'Trilha'),
+              icon: Icon(Icons.timeline_outlined),
+              selectedIcon: Icon(Icons.timeline),
+              label: 'Trilha'),
           NavigationDestination(
-            icon: Icon(Icons.bolt_outlined), selectedIcon: Icon(Icons.bolt),
-            label: 'Duelos'),
+              icon: Icon(Icons.bolt_outlined),
+              selectedIcon: Icon(Icons.bolt),
+              label: 'Duelos'),
           NavigationDestination(
-            icon: Icon(Icons.group_outlined), selectedIcon: Icon(Icons.group),
-            label: 'Amigos'),
+              icon: Icon(Icons.group_outlined),
+              selectedIcon: Icon(Icons.group),
+              label: 'Amigos'),
           NavigationDestination(
-            icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person),
-            label: 'Perfil'),
+              icon: Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person),
+              label: 'Perfil'),
         ],
       ),
     );

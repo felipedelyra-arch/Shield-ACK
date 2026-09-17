@@ -76,15 +76,21 @@ class IntegrityService {
 
     Talsec.instance.attachListener(
       ThreatCallback(
-        onPrivilegedAccess: () => _raise(IntegrityLevel.compromisedDevice, 'root_jailbreak'),
+        onPrivilegedAccess: () =>
+            _raise(IntegrityLevel.compromisedDevice, 'root_jailbreak'),
         onDebug: () => _raise(IntegrityLevel.observed, 'debugger'),
         onSimulator: () => _raise(IntegrityLevel.observed, 'simulator'),
-        onAppIntegrity: () => _raise(IntegrityLevel.activeAttack, 'app_integrity'),
+        onAppIntegrity: () =>
+            _raise(IntegrityLevel.activeAttack, 'app_integrity'),
         onHooks: () => _raise(IntegrityLevel.activeAttack, 'hooking'),
-        onSecureHardwareNotAvailable: () => _raise(IntegrityLevel.observed, 'no_secure_hw'),
-        onUnofficialStore: () => _raise(IntegrityLevel.compromisedDevice, 'unofficial_store'),
-        onDeviceBinding: () => _raise(IntegrityLevel.compromisedDevice, 'device_binding'),
-        onObfuscationIssues: () => _raise(IntegrityLevel.observed, 'obfuscation'),
+        onSecureHardwareNotAvailable: () =>
+            _raise(IntegrityLevel.observed, 'no_secure_hw'),
+        onUnofficialStore: () =>
+            _raise(IntegrityLevel.compromisedDevice, 'unofficial_store'),
+        onDeviceBinding: () =>
+            _raise(IntegrityLevel.compromisedDevice, 'device_binding'),
+        onObfuscationIssues: () =>
+            _raise(IntegrityLevel.observed, 'obfuscation'),
         onPasscode: () => _raise(IntegrityLevel.observed, 'no_passcode'),
       ),
     );
@@ -100,7 +106,11 @@ class IntegrityService {
     _controller.add(level);
 
     unawaited(_security.saveIntegrityState(
-      jsonEncode({'level': level.name, 'threat': threat, 'at': DateTime.now().toIso8601String()}),
+      jsonEncode({
+        'level': level.name,
+        'threat': threat,
+        'at': DateTime.now().toIso8601String()
+      }),
     ));
 
     if (level == IntegrityLevel.activeAttack) {
@@ -109,8 +119,10 @@ class IntegrityService {
   }
 
   /// Consultado pelas features para degradar funcionalidade sensível.
-  bool get allowsOfflineDownload => _current.index < IntegrityLevel.compromisedDevice.index;
-  bool get allowsRankedDuel => _current.index < IntegrityLevel.compromisedDevice.index;
+  bool get allowsOfflineDownload =>
+      _current.index < IntegrityLevel.compromisedDevice.index;
+  bool get allowsRankedDuel =>
+      _current.index < IntegrityLevel.compromisedDevice.index;
 
   Future<void> dispose() => _controller.close();
 }

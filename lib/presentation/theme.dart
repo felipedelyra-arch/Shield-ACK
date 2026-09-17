@@ -62,27 +62,45 @@ abstract final class Gap {
 /// que é onde a monoespaçada vira maneirismo.
 abstract final class Face {
   static TextStyle get display => GoogleFonts.spaceGrotesk(
-        fontSize: 30, height: 1.15, fontWeight: FontWeight.w600,
-        letterSpacing: -0.6, color: Shade.text,
+        fontSize: 30,
+        height: 1.15,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.6,
+        color: Shade.text,
       );
   static TextStyle get title => GoogleFonts.spaceGrotesk(
-        fontSize: 20, height: 1.25, fontWeight: FontWeight.w600,
-        letterSpacing: -0.3, color: Shade.text,
+        fontSize: 20,
+        height: 1.25,
+        fontWeight: FontWeight.w600,
+        letterSpacing: -0.3,
+        color: Shade.text,
       );
   static TextStyle get body => GoogleFonts.spaceGrotesk(
-        fontSize: 15, height: 1.5, fontWeight: FontWeight.w400, color: Shade.text,
+        fontSize: 15,
+        height: 1.5,
+        fontWeight: FontWeight.w400,
+        color: Shade.text,
       );
   static TextStyle get meta => GoogleFonts.spaceGrotesk(
-        fontSize: 13, height: 1.4, fontWeight: FontWeight.w400, color: Shade.textDim,
+        fontSize: 13,
+        height: 1.4,
+        fontWeight: FontWeight.w400,
+        color: Shade.textDim,
       );
+
   /// Números que se alinham em coluna (ranking, placar, XP).
   static TextStyle get figure => GoogleFonts.spaceGrotesk(
-        fontSize: 15, fontWeight: FontWeight.w600, color: Shade.text,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+        color: Shade.text,
         fontFeatures: const [FontFeature.tabularFigures()],
       );
+
   /// Apenas conteúdo real de terminal / protocolo.
   static TextStyle get code => GoogleFonts.jetBrainsMono(
-        fontSize: 14, height: 1.5, color: Shade.text,
+        fontSize: 14,
+        height: 1.5,
+        color: Shade.text,
       );
 }
 
@@ -96,7 +114,8 @@ ThemeData buildTheme() {
       onPrimary: Shade.base,
       error: Wire.rst.color,
     ),
-    textTheme: base.textTheme.apply(fontFamily: GoogleFonts.spaceGrotesk().fontFamily),
+    textTheme:
+        base.textTheme.apply(fontFamily: GoogleFonts.spaceGrotesk().fontFamily),
     appBarTheme: AppBarTheme(
       backgroundColor: Shade.base,
       surfaceTintColor: Colors.transparent,
@@ -105,7 +124,8 @@ ThemeData buildTheme() {
       titleTextStyle: Face.title,
       iconTheme: const IconThemeData(color: Shade.textDim),
     ),
-    dividerTheme: const DividerThemeData(color: Shade.rule, thickness: 1, space: 1),
+    dividerTheme:
+        const DividerThemeData(color: Shade.rule, thickness: 1, space: 1),
     splashFactory: InkSparkle.splashFactory,
   );
 }

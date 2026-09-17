@@ -20,7 +20,8 @@ class SecureScreen extends StatefulWidget {
   State<SecureScreen> createState() => _SecureScreenState();
 }
 
-class _SecureScreenState extends State<SecureScreen> with WidgetsBindingObserver {
+class _SecureScreenState extends State<SecureScreen>
+    with WidgetsBindingObserver {
   static const _ios = MethodChannel('shieldack/secure_screen');
   bool _captured = false;
 
@@ -33,7 +34,8 @@ class _SecureScreenState extends State<SecureScreen> with WidgetsBindingObserver
 
   Future<void> _enable() async {
     if (Platform.isAndroid) {
-      await FlutterWindowManagerPlus.addFlags(FlutterWindowManagerPlus.FLAG_SECURE);
+      await FlutterWindowManagerPlus.addFlags(
+          FlutterWindowManagerPlus.FLAG_SECURE);
     } else if (Platform.isIOS) {
       _captured = await _ios.invokeMethod<bool>('isCaptureActive') ?? false;
       if (mounted) setState(() {});

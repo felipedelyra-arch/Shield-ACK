@@ -108,7 +108,9 @@ class AppDatabase extends _$AppDatabase {
 
 /// Helper para (de)serializar payloads sem espalhar jsonEncode pelo código.
 extension OutboxJson on OutboxItem {
-  Map<String, dynamic> get payloadMap => jsonDecode(payload) as Map<String, dynamic>;
-  Map<String, dynamic>? get resultMap =>
-      resultJson == null ? null : jsonDecode(resultJson!) as Map<String, dynamic>;
+  Map<String, dynamic> get payloadMap =>
+      jsonDecode(payload) as Map<String, dynamic>;
+  Map<String, dynamic>? get resultMap => resultJson == null
+      ? null
+      : jsonDecode(resultJson!) as Map<String, dynamic>;
 }

@@ -12,7 +12,8 @@ import '../../firebase_options.dart';
 /// Inicialização do Firebase. Ordem importa.
 class FirebaseBootstrap {
   static Future<void> init({required bool isProd}) async {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform);
 
     // --- App Check ANTES de qualquer outro SDK fazer request.
     //
@@ -21,12 +22,14 @@ class FirebaseBootstrap {
     // Play Integrity e App Attest atestam no SERVIDOR do Google; o atacante não
     // controla essa checagem, diferente de qualquer detecção feita dentro do app.
     await FirebaseAppCheck.instance.activate(
-      providerAndroid:
-          isProd ? const AndroidPlayIntegrityProvider() : const AndroidDebugProvider(),
+      providerAndroid: isProd
+          ? const AndroidPlayIntegrityProvider()
+          : const AndroidDebugProvider(),
       // appAttest puro, sem fallback para DeviceCheck: o fallback aceita devices que
       // não suportam App Attest (iOS < 14), e é justamente esse conjunto que um
       // atacante escolheria emular. Preferimos recusar o device antigo.
-      providerApple: isProd ? const AppleAppAttestProvider() : const AppleDebugProvider(),
+      providerApple:
+          isProd ? const AppleAppAttestProvider() : const AppleDebugProvider(),
     );
     // Token de App Check renovado automaticamente enquanto o app está em foreground.
     await FirebaseAppCheck.instance.setTokenAutoRefreshEnabled(true);

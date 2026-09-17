@@ -150,7 +150,9 @@ class _LessonRow extends StatelessWidget {
         Text(
           _detail,
           style: Face.meta.copyWith(
-            color: lesson.state == Wire.idle ? Shade.textFaint : lesson.state.color,
+            color: lesson.state == Wire.idle
+                ? Shade.textFaint
+                : lesson.state.color,
           ),
         ),
       ],

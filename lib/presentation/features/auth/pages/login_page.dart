@@ -32,7 +32,8 @@ class LoginPage extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              ActionButton('Entrar com Google', onPressed: () => context.go('/')),
+              ActionButton('Entrar com Google',
+                  onPressed: () => context.go('/')),
               const SizedBox(height: Gap.sm),
               ActionButton('Usar e-mail e senha',
                   tone: Shade.surface, onPressed: () => context.go('/')),
@@ -44,7 +45,8 @@ class LoginPage extends StatelessWidget {
                     'Ao entrar você aceita a política de privacidade. '
                     'Seu e-mail nunca é mostrado para outros alunos.',
                     textAlign: TextAlign.center,
-                    style: Face.meta.copyWith(fontSize: 12, color: Shade.textFaint),
+                    style: Face.meta
+                        .copyWith(fontSize: 12, color: Shade.textFaint),
                   ),
                 ),
               ),

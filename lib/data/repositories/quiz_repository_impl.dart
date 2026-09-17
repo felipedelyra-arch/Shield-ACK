@@ -30,9 +30,17 @@ class QuizRepositoryImpl implements QuizRepository {
     final data = await _outbox.resultFor(key);
     if (data == null) {
       return Ok(QuizOutcome(
-        passed: false, score: 0, correctCount: 0, total: s.answers.length,
-        xpAwarded: 0, totalXp: 0, level: 0, hearts: 0, streakDays: 0,
-        perQuestion: const [], pending: true,
+        passed: false,
+        score: 0,
+        correctCount: 0,
+        total: s.answers.length,
+        xpAwarded: 0,
+        totalXp: 0,
+        level: 0,
+        hearts: 0,
+        streakDays: 0,
+        perQuestion: const [],
+        pending: true,
       ));
     }
     return Ok(_map(data));

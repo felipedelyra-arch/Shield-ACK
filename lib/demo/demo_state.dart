@@ -29,10 +29,12 @@ class DemoState extends ChangeNotifier {
       DemoLesson('Subredes e CIDR', 810, 50, Wire.idle, 0),
       DemoLesson('NAT e port forwarding', 595, 50, Wire.idle, 0),
     ]),
-    DemoTrack('Fundamentos de segurança', 'Superfície de ataque e como reduzi-la.', [
+    DemoTrack(
+        'Fundamentos de segurança', 'Superfície de ataque e como reduzi-la.', [
       DemoLesson('Tríade CIA sem decoreba', 420, 30, Wire.ack, 1.0),
       DemoLesson('Autenticação vs autorização', 505, 40, Wire.rst, 0.5),
-      DemoLesson('Hashing: por que não SHA-256 em senha', 690, 50, Wire.idle, 0),
+      DemoLesson(
+          'Hashing: por que não SHA-256 em senha', 690, 50, Wire.idle, 0),
       DemoLesson('TLS 1.3 e o que o cadeado não diz', 880, 50, Wire.idle, 0),
     ]),
     DemoTrack('DevSecOps', 'Segurança que roda no pipeline, não na reunião.', [
@@ -57,12 +59,14 @@ class DemoState extends ChangeNotifier {
 
   /// Aplica o resultado de um quiz. Em produção isto é a resposta de
   /// `submitQuiz` — aqui só mexe nos mesmos campos que a Callable mexeria.
-  void applyQuiz({required DemoLesson lesson, required int correct, required int total}) {
+  void applyQuiz(
+      {required DemoLesson lesson, required int correct, required int total}) {
     final passed = correct / total >= 0.7;
     if (passed) {
       lesson.state = Wire.ack;
       lesson.progress = 1.0;
-      xp += lesson.xpReward + (correct == total ? (lesson.xpReward * .25).round() : 0);
+      xp += lesson.xpReward +
+          (correct == total ? (lesson.xpReward * .25).round() : 0);
       level = 1 + (xp / 120).floor();
       final list = tracks.expand((t) => t.lessons).toList();
       final i = list.indexOf(lesson);
@@ -87,7 +91,8 @@ class DemoTrack {
 }
 
 class DemoLesson {
-  DemoLesson(this.title, this.durationSec, this.xpReward, this.state, this.progress);
+  DemoLesson(
+      this.title, this.durationSec, this.xpReward, this.state, this.progress);
   final String title;
   final int durationSec;
   final int xpReward;
@@ -112,7 +117,8 @@ class DemoFriend {
 enum DuelTurn { yours, theirs, invite }
 
 class DemoDuel {
-  DemoDuel(this.opponent, this.track, this.turn, this.myScore, this.theirScore, this.round);
+  DemoDuel(this.opponent, this.track, this.turn, this.myScore, this.theirScore,
+      this.round);
   final String opponent;
   final String track;
   final DuelTurn turn;
@@ -124,7 +130,8 @@ class DemoDuel {
 /// Questões da demo. O gabarito só está aqui porque é demo — em produção ele
 /// vive em `answerKeys/{qId}`, inacessível por Security Rules.
 class DemoQuestion {
-  const DemoQuestion(this.prompt, this.options, this.correct, this.explanation, {this.code});
+  const DemoQuestion(this.prompt, this.options, this.correct, this.explanation,
+      {this.code});
   final String prompt;
   final List<String> options;
   final int correct;
@@ -141,7 +148,8 @@ const demoQuestions = <DemoQuestion>[
     1,
     'O servidor confirma o SYN recebido e envia o próprio SYN na mesma resposta — '
         'daí o nome SYN-ACK. O handshake fecha quando o cliente devolve o ACK final.',
-    code: 'Flags [S], seq 3829471028, win 64240\n  options [mss 1460,sackOK,TS]',
+    code:
+        'Flags [S], seq 3829471028, win 64240\n  options [mss 1460,sackOK,TS]',
   ),
   DemoQuestion(
     'Uma porta responde com RST imediatamente. O que isso indica?',

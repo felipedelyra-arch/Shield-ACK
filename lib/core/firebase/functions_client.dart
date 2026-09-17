@@ -74,8 +74,12 @@ class FunctionsClient {
         return const UnauthenticatedFailure();
 
       case 'failed-precondition':
-        if (code == 'APP_CHECK_REQUIRED') return const IntegrityRejectedFailure();
-        if (code == 'EMAIL_NOT_VERIFIED') return const EmailNotVerifiedFailure();
+        if (code == 'APP_CHECK_REQUIRED') {
+          return const IntegrityRejectedFailure();
+        }
+        if (code == 'EMAIL_NOT_VERIFIED') {
+          return const EmailNotVerifiedFailure();
+        }
         return DeniedFailure(code);
 
       case 'resource-exhausted':

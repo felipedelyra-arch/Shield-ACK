@@ -33,18 +33,20 @@ final sessionGuardProvider = Provider<SessionGuard>((ref) {
 final functionsClientProvider = Provider((ref) => FunctionsClient(
       functions: FirebaseFunctions.instanceFor(region: functionsRegion),
       auth: FirebaseAuth.instance,
-      onSessionRevoked: (reason) => ref.read(sessionGuardProvider).forceLogout(reason),
+      onSessionRevoked: (reason) =>
+          ref.read(sessionGuardProvider).forceLogout(reason),
     ));
 
 final outboxProvider = Provider<Outbox>((ref) {
-  final outbox = Outbox(ref.watch(appDatabaseProvider), ref.watch(functionsClientProvider));
+  final outbox = Outbox(
+      ref.watch(appDatabaseProvider), ref.watch(functionsClientProvider));
   // onDispose sempre: um Timer sobrevivente é bateria e cota queimadas em silêncio.
   ref.onDispose(outbox.stop);
   return outbox;
 });
 
-final quizRepositoryProvider =
-    Provider<QuizRepository>((ref) => QuizRepositoryImpl(ref.watch(outboxProvider)));
+final quizRepositoryProvider = Provider<QuizRepository>(
+    (ref) => QuizRepositoryImpl(ref.watch(outboxProvider)));
 
 /// Container mínimo para o isolate do WorkManager (sem UI, sem listeners).
 Future<ProviderContainer> buildHeadlessContainer() async {

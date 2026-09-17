@@ -47,7 +47,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (_, s) {
           final (correct, total, lesson) = s.extra! as (int, int, DemoLesson);
           return ResultPage(
-            correct: correct, total: total, lesson: lesson, demo: demo);
+              correct: correct, total: total, lesson: lesson, demo: demo);
         },
       ),
     ],

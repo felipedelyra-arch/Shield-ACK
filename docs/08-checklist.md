@@ -4,16 +4,16 @@ Item a item, com **como testar**. Um item sem teste é um item não implementado
 
 ## Security Rules
 
-- [ ] Default deny ativo · `npm --prefix test/rules test` → bloco "default deny"
-- [ ] `answerKeys` ilegível por qualquer cliente, inclusive admin · bloco "GABARITO"
-- [ ] Questão publicada não contém campo de resposta · `publishCatalog` bloqueia + teste de rules
-- [ ] Cliente não escreve em `progress` / `xpEvents` / `hearts` / `streak` · bloco "PROGRESSO E XP"
-- [ ] Whitelist de campos no perfil (anti mass-assignment) · bloco "PERFIL"
-- [ ] `updatedAt` forjado pelo cliente é negado · bloco "PERFIL"
-- [ ] `/private` ilegível por terceiros · bloco "DADOS PRIVADOS"
-- [ ] Social exige `email_verified` · bloco "SOCIAL"
-- [ ] `auditLogs`, `rateLimits`, `counters` fechados · bloco "SERVER-ONLY"
-- [ ] Anônimo não lê nada · bloco "NÃO AUTENTICADO"
+- [x] Default deny ativo · `npm --prefix test/rules test` → bloco "default deny"
+- [x] `answerKeys` ilegível por qualquer cliente, inclusive admin · bloco "GABARITO"
+- [x] Questão publicada não contém campo de resposta · `publishCatalog` bloqueia + teste de rules
+- [x] Cliente não escreve em `progress` / `xpEvents` / `hearts` / `streak` · bloco "PROGRESSO E XP"
+- [x] Whitelist de campos no perfil (anti mass-assignment) · bloco "PERFIL"
+- [x] `updatedAt` forjado pelo cliente é negado · bloco "PERFIL"
+- [x] `/private` ilegível por terceiros · bloco "DADOS PRIVADOS"
+- [x] Social exige `email_verified` · bloco "SOCIAL"
+- [x] `auditLogs`, `rateLimits`, `counters` fechados · bloco "SERVER-ONLY"
+- [x] Anônimo não lê nada · bloco "NÃO AUTENTICADO"
 
 **Teste manual decisivo:** com o SDK web e um token de usuário real, tentar
 `setDoc(doc(db,'users/<uid>'), {xp: 999999})`. Deve falhar. É o teste que prova a
@@ -38,21 +38,21 @@ regra de ouro.
 
 ## Cloud Functions
 
-- [ ] Toda Callable exportada passa por `guarded()` · `grep -c 'export const' src/*.ts` vs `grep -c 'guarded('`
-- [ ] Entrada validada por zod, sem exceção
-- [ ] Nenhum path de documento montado com string crua do cliente · charset whitelist em `docId`
-- [ ] `maxInstances` definido globalmente · `src/lib/init.ts`
-- [ ] Rate limit por uid em toda Callable com efeito colateral
-- [ ] Segredos só em Secret Manager · `grep -rn "functions.config()\|apiKey\s*=" functions/src` → vazio
-- [ ] `npm audit --audit-level=high` sem findings
+- [x] Toda Callable exportada passa por `guarded()` · `grep -c 'export const' src/*.ts` vs `grep -c 'guarded('`
+- [x] Entrada validada por zod, sem exceção
+- [x] Nenhum path de documento montado com string crua do cliente · charset whitelist em `docId`
+- [x] `maxInstances` definido globalmente · `src/lib/init.ts`
+- [x] Rate limit por uid em toda Callable com efeito colateral
+- [x] Segredos só em Secret Manager · `grep -rn "functions.config()\|apiKey\s*=" functions/src` → vazio
+- [x] `npm audit --audit-level=high` sem findings
 
 ## Idempotência e anti-cheat
 
-- [ ] `submitQuiz` × 50 com a mesma chave credita XP **uma vez** · teste no emulador
-- [ ] Transição ilegal de duelo é rejeitada · `test/logic.test.ts`
-- [ ] Resposta abaixo do piso de tempo é auditada e reprova
-- [ ] Vidas regeneram por timestamp; mudar o relógio do device não cria vidas · `test/logic.test.ts`
-- [ ] Streak usa o dia civil no fuso do usuário · `test/logic.test.ts`
+- [x] `submitQuiz` × 50 com a mesma chave credita XP **uma vez** · teste no emulador
+- [x] Transição ilegal de duelo é rejeitada · `test/logic.test.ts`
+- [x] Resposta abaixo do piso de tempo é auditada e reprova · `functions/test/submitQuiz.integration.test.ts`
+- [x] Vidas regeneram por timestamp; mudar o relógio do device não cria vidas · `test/logic.test.ts`
+- [x] Streak usa o dia civil no fuso do usuário · `test/logic.test.ts`
 
 ## Cliente
 
@@ -76,15 +76,15 @@ regra de ouro.
 - [ ] Consentimento explícito para push e telemetria
 - [ ] `exportMyData` devolve dados do titular
 - [ ] `requestAccountDeletion` apaga Auth + Firestore + Storage + FCM · verificar no console
-- [ ] Nenhum PII em `auditLogs` · `grep -n "email\|displayName" functions/src/lib/audit.ts` → vazio
+- [x] Nenhum PII em `auditLogs` · `grep -n "email\|displayName" functions/src/lib/audit.ts` → vazio
 - [ ] Payload de push sem dado sensível
 - [ ] TTL configurado em `rateLimits` e `outboxAck`
 - [ ] Retenção definida para `auditLogs` no BigQuery
 
 ## CI/CD
 
-- [ ] `flutter analyze` + `dart format --set-exit-if-changed` sem erro
-- [ ] `check_layering.sh` passa (domain não importa Flutter/Firebase)
+- [x] `flutter analyze` + `dart format --set-exit-if-changed` sem erro
+- [x] `check_layering.sh` passa (domain não importa Flutter/Firebase)
 - [ ] Testes de Rules rodam no emulador a cada PR
 - [ ] `osv-scanner` no app + `npm audit` nas Functions a cada PR
 - [ ] Deploy de Rules/Indexes/Functions versionado, nunca pelo console

@@ -7,9 +7,11 @@ sealed class Result<F, T> {
 
   T? get valueOrNull => switch (this) { Ok(:final value) => value, _ => null };
 
-  F? get failureOrNull => switch (this) { Err(:final failure) => failure, _ => null };
+  F? get failureOrNull =>
+      switch (this) { Err(:final failure) => failure, _ => null };
 
-  R fold<R>(R Function(F failure) onErr, R Function(T value) onOk) => switch (this) {
+  R fold<R>(R Function(F failure) onErr, R Function(T value) onOk) =>
+      switch (this) {
         Ok(:final value) => onOk(value),
         Err(:final failure) => onErr(failure),
       };
@@ -19,7 +21,8 @@ sealed class Result<F, T> {
         Err(:final failure) => Err(failure),
       };
 
-  Future<Result<F, R>> flatMapAsync<R>(Future<Result<F, R>> Function(T value) f) async =>
+  Future<Result<F, R>> flatMapAsync<R>(
+          Future<Result<F, R>> Function(T value) f) async =>
       switch (this) {
         Ok(:final value) => await f(value),
         Err(:final failure) => Err(failure),

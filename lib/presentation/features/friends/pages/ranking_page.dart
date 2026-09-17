@@ -26,7 +26,8 @@ class RankingPage extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.md, Gap.lg),
             child: Text('Esta semana', style: Face.meta),
           ),
-          for (var i = 0; i < ranked.length; i++) _Row(rank: i + 1, friend: ranked[i]),
+          for (var i = 0; i < ranked.length; i++)
+            _Row(rank: i + 1, friend: ranked[i]),
           const SizedBox(height: Gap.lg),
           Padding(
             padding: const EdgeInsets.all(Gap.md),
@@ -45,7 +46,8 @@ class RankingPage extends StatelessWidget {
                   style: Face.meta,
                 ),
                 const SizedBox(height: Gap.md),
-                ActionButton('Adicionar por código', tone: Shade.surface, onPressed: () {}),
+                ActionButton('Adicionar por código',
+                    tone: Shade.surface, onPressed: () {}),
               ],
             ),
           ),
@@ -70,8 +72,8 @@ class _Row extends StatelessWidget {
           SizedBox(
             width: 28,
             child: Text('$rank',
-                style: Face.figure.copyWith(
-                    color: rank <= 3 ? Shade.text : Shade.textFaint)),
+                style: Face.figure
+                    .copyWith(color: rank <= 3 ? Shade.text : Shade.textFaint)),
           ),
           Expanded(
             child: Row(
@@ -80,21 +82,24 @@ class _Row extends StatelessWidget {
                   child: Text(friend.name,
                       overflow: TextOverflow.ellipsis,
                       style: Face.body.copyWith(
-                          fontWeight: friend.isMe ? FontWeight.w600 : FontWeight.w400)),
+                          fontWeight:
+                              friend.isMe ? FontWeight.w600 : FontWeight.w400)),
                 ),
                 if (friend.online) ...[
                   const SizedBox(width: Gap.sm),
                   Container(
                     width: 6,
                     height: 6,
-                    decoration: BoxDecoration(color: Wire.ack.color, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                        color: Wire.ack.color, shape: BoxShape.circle),
                   ),
                 ],
               ],
             ),
           ),
           Text('${friend.streak}d',
-              style: Face.figure.copyWith(fontSize: 13, color: Shade.textFaint)),
+              style:
+                  Face.figure.copyWith(fontSize: 13, color: Shade.textFaint)),
           const SizedBox(width: Gap.md),
           SizedBox(
             width: 56,

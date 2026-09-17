@@ -81,7 +81,8 @@ class Outbox {
   /// drenagem em vez de virar no-op. Sem isso, `await drain()` logo depois de um
   /// `enqueue()` (que dispara drenagem sem esperar) retornaria antes de o item ter
   /// sido enviado — bug silencioso em produção e teste intermitente.
-  Future<void> drain() => _inFlight ??= _drain().whenComplete(() => _inFlight = null);
+  Future<void> drain() =>
+      _inFlight ??= _drain().whenComplete(() => _inFlight = null);
 
   Future<void> _drain() async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -98,7 +99,8 @@ class Outbox {
       // é reenviado — e o servidor devolve o resultado gravado via outboxAck,
       // sem reprocessar. É esta combinação que fecha o buraco do "app morto no
       // meio da submissão".
-      await (_db.update(_db.outboxItems)..where((t) => t.idempotencyKey.equals(item.idempotencyKey)))
+      await (_db.update(_db.outboxItems)
+            ..where((t) => t.idempotencyKey.equals(item.idempotencyKey)))
           .write(const OutboxItemsCompanion(status: Value('inflight')));
 
       final result = await _client.call(item.operation, item.payloadMap);
@@ -111,7 +113,8 @@ class Outbox {
   }
 
   Future<void> _onSuccess(OutboxItem item, Map<String, dynamic> data) async {
-    await (_db.update(_db.outboxItems)..where((t) => t.idempotencyKey.equals(item.idempotencyKey)))
+    await (_db.update(_db.outboxItems)
+          ..where((t) => t.idempotencyKey.equals(item.idempotencyKey)))
         .write(OutboxItemsCompanion(
       status: const Value('done'),
       resultJson: Value(jsonEncode(data)),
@@ -134,11 +137,13 @@ class Outbox {
 
     // RateLimited respeita o retryAfter do servidor em vez do backoff local.
     final delay = switch (failure) {
-      RateLimitedFailure(:final retryAfterSec) => Duration(seconds: retryAfterSec),
+      RateLimitedFailure(:final retryAfterSec) =>
+        Duration(seconds: retryAfterSec),
       _ => _backoff(attempts),
     };
 
-    await (_db.update(_db.outboxItems)..where((t) => t.idempotencyKey.equals(item.idempotencyKey)))
+    await (_db.update(_db.outboxItems)
+          ..where((t) => t.idempotencyKey.equals(item.idempotencyKey)))
         .write(OutboxItemsCompanion(
       status: Value(permanent || attempts >= _maxAttempts ? 'dead' : 'pending'),
       attempts: Value(attempts),
@@ -165,9 +170,12 @@ class Outbox {
 
   /// Limpeza: itens concluídos há mais de 7 dias não servem para nada.
   Future<void> vacuum() async {
-    final cutoff = DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
+    final cutoff =
+        DateTime.now().subtract(const Duration(days: 7)).millisecondsSinceEpoch;
     await (_db.delete(_db.outboxItems)
-          ..where((t) => t.status.equals('done') & t.createdAtMs.isSmallerThanValue(cutoff)))
+          ..where((t) =>
+              t.status.equals('done') &
+              t.createdAtMs.isSmallerThanValue(cutoff)))
         .go();
   }
 }

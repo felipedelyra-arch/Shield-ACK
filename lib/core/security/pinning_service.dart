@@ -22,7 +22,8 @@ import 'package:dio/dio.dart';
 /// `docs/05-seguranca-mobile.md`: App Check enforce + trust-anchors apenas do sistema
 /// (Android) + ATS com Certificate Transparency (iOS). Ver docs/00-CORRECOES.md C5.
 class PinningService {
-  PinningService({required this.pins}) : assert(pins.length >= 2, 'pin primário + backup obrigatórios');
+  PinningService({required this.pins})
+      : assert(pins.length >= 2, 'pin primário + backup obrigatórios');
 
   /// Base64 do SHA-256 do SubjectPublicKeyInfo em DER.
   /// DOIS pins no mínimo: primário (chave em uso) e backup (próxima chave, já gerada
@@ -32,8 +33,10 @@ class PinningService {
   void apply(Dio dio) {
     final adapter = IOHttpClientAdapter();
     adapter.createHttpClient = () {
-      final client = HttpClient(context: SecurityContext(withTrustedRoots: true));
-      client.badCertificateCallback = (_, __, ___) => false; // nunca aceitar cert inválido
+      final client =
+          HttpClient(context: SecurityContext(withTrustedRoots: true));
+      client.badCertificateCallback =
+          (_, __, ___) => false; // nunca aceitar cert inválido
       return client;
     };
 

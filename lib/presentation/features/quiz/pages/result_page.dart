@@ -31,7 +31,8 @@ class ResultPage extends StatefulWidget {
   State<ResultPage> createState() => _ResultPageState();
 }
 
-class _ResultPageState extends State<ResultPage> with SingleTickerProviderStateMixin {
+class _ResultPageState extends State<ResultPage>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1400),
@@ -43,7 +44,8 @@ class _ResultPageState extends State<ResultPage> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     // Respeita quem desligou animação no sistema: sem movimento, vai direto ao fim.
-    final reduce = WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+    final reduce = WidgetsBinding
+        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
     reduce ? _c.value = 1 : _c.forward();
   }
 
@@ -57,7 +59,9 @@ class _ResultPageState extends State<ResultPage> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final xpGained = _passed
         ? widget.lesson.xpReward +
-            (widget.correct == widget.total ? (widget.lesson.xpReward * .25).round() : 0)
+            (widget.correct == widget.total
+                ? (widget.lesson.xpReward * .25).round()
+                : 0)
         : 0;
 
     return Scaffold(
@@ -72,13 +76,15 @@ class _ResultPageState extends State<ResultPage> with SingleTickerProviderStateM
                 height: 120,
                 child: AnimatedBuilder(
                   animation: _c,
-                  builder: (context, _) =>
-                      CustomPaint(painter: _HandshakePainter(_c.value, _passed), size: Size.infinite),
+                  builder: (context, _) => CustomPaint(
+                      painter: _HandshakePainter(_c.value, _passed),
+                      size: Size.infinite),
                 ),
               ),
               const SizedBox(height: Gap.xl),
               FadeTransition(
-                opacity: CurvedAnimation(parent: _c, curve: const Interval(0.75, 1)),
+                opacity:
+                    CurvedAnimation(parent: _c, curve: const Interval(0.75, 1)),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -104,7 +110,9 @@ class _ResultPageState extends State<ResultPage> with SingleTickerProviderStateM
                           tone: _passed ? Wire.ack.color : Shade.textFaint,
                         ),
                         const SizedBox(width: Gap.xl),
-                        Field(value: '${widget.demo.streak}', label: 'dias seguidos'),
+                        Field(
+                            value: '${widget.demo.streak}',
+                            label: 'dias seguidos'),
                         const SizedBox(width: Gap.xl),
                         Field(
                           value: '${widget.demo.hearts}',
@@ -161,8 +169,20 @@ class _HandshakePainter extends CustomPainter {
       ..drawLine(Offset(right, 0), Offset(right, size.height), rail);
 
     final steps = [
-      (y: rowH * 0.5, from: left, to: right, label: 'SYN', tone: Wire.syn.color),
-      (y: rowH * 1.5, from: right, to: left, label: 'SYN-ACK', tone: Wire.syn.color),
+      (
+        y: rowH * 0.5,
+        from: left,
+        to: right,
+        label: 'SYN',
+        tone: Wire.syn.color
+      ),
+      (
+        y: rowH * 1.5,
+        from: right,
+        to: left,
+        label: 'SYN-ACK',
+        tone: Wire.syn.color
+      ),
       (
         y: rowH * 2.5,
         from: left,
@@ -194,7 +214,8 @@ class _HandshakePainter extends CustomPainter {
           ),
           textDirection: TextDirection.ltr,
         )..layout();
-        tp.paint(canvas, Offset((left + right) / 2 - tp.width / 2, s.y - tp.height - 4));
+        tp.paint(canvas,
+            Offset((left + right) / 2 - tp.width / 2, s.y - tp.height - 4));
       }
 
       if (local == 1) {
@@ -204,5 +225,6 @@ class _HandshakePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_HandshakePainter old) => old.t != t || old.passed != passed;
+  bool shouldRepaint(_HandshakePainter old) =>
+      old.t != t || old.passed != passed;
 }

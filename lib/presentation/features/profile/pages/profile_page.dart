@@ -21,7 +21,8 @@ class ProfilePage extends StatelessWidget {
         body: ListView(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.md, Gap.lg),
+              padding:
+                  const EdgeInsets.fromLTRB(Gap.md, Gap.sm, Gap.md, Gap.lg),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -40,7 +41,8 @@ class ProfilePage extends StatelessWidget {
                       ),
                       const SizedBox(width: Gap.xl),
                       Field(
-                        value: '${demo.tracks.expand((t) => t.lessons).where((l) => l.state == Wire.ack).length}',
+                        value:
+                            '${demo.tracks.expand((t) => t.lessons).where((l) => l.state == Wire.ack).length}',
                         label: 'aulas',
                       ),
                     ],
@@ -50,11 +52,14 @@ class ProfilePage extends StatelessWidget {
             ),
             const Divider(),
             const _Item('Notificações', 'Lembretes, streak em risco, desafios'),
-            const _Item('Bloqueio por biometria', 'Pedir ao abrir dados da conta'),
+            const _Item(
+                'Bloqueio por biometria', 'Pedir ao abrir dados da conta'),
             const _Item('Downloads', 'Aulas salvas para assistir sem rede'),
             const Divider(),
-            const _Item('Baixar meus dados', 'Recebe um arquivo com tudo que guardamos'),
-            const _Item('Excluir minha conta', 'Apaga tudo, sem volta', tone: true),
+            const _Item('Baixar meus dados',
+                'Recebe um arquivo com tudo que guardamos'),
+            const _Item('Excluir minha conta', 'Apaga tudo, sem volta',
+                tone: true),
             const Divider(),
             const _Item('Sair', 'Encerra a sessão neste aparelho'),
             const SizedBox(height: Gap.xl),
@@ -81,7 +86,8 @@ class _Item extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: Face.body.copyWith(color: tone ? Wire.rst.color : Shade.text)),
+                style: Face.body
+                    .copyWith(color: tone ? Wire.rst.color : Shade.text)),
             const SizedBox(height: 2),
             Text(detail, style: Face.meta),
           ],

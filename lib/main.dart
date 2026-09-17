@@ -30,7 +30,8 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Trava dura: demo e prod são mutuamente exclusivos por construção.
-  assert(!(isDemo && isProd), 'SHIELDACK_ENV=demo nunca pode ser build de produção');
+  assert(!(isDemo && isProd),
+      'SHIELDACK_ENV=demo nunca pode ser build de produção');
 
   if (isDemo) {
     // Só a interface. Nenhum Firebase, nenhum Keystore, nenhum banco.
@@ -89,7 +90,8 @@ Future<void> main() async {
   container.read(outboxProvider).start();
   await registerOutboxWorker();
 
-  runApp(UncontrolledProviderScope(container: container, child: const ShieldAckApp()));
+  runApp(UncontrolledProviderScope(
+      container: container, child: const ShieldAckApp()));
 }
 
 /// Sinaliza logout forçado; o router escuta e volta para a tela de login.

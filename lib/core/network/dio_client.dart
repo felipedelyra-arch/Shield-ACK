@@ -28,13 +28,17 @@ Dio buildDioClient({required PinningService pinning, required String baseUrl}) {
     onError: (e, handler) async {
       // Retry apenas em método idempotente. Repetir um POST cegamente é como se
       // duplica uma cobrança — aqui, uma submissão.
-      final idempotent = const {'GET', 'HEAD', 'PUT'}.contains(e.requestOptions.method);
+      final idempotent =
+          const {'GET', 'HEAD', 'PUT'}.contains(e.requestOptions.method);
       final retriable = e.type == DioExceptionType.connectionTimeout ||
           e.type == DioExceptionType.receiveTimeout ||
           (e.response?.statusCode ?? 0) >= 500;
 
-      if (idempotent && retriable && (e.requestOptions.extra['retried'] ?? 0) < 2) {
-        e.requestOptions.extra['retried'] = (e.requestOptions.extra['retried'] ?? 0) + 1;
+      if (idempotent &&
+          retriable &&
+          (e.requestOptions.extra['retried'] ?? 0) < 2) {
+        e.requestOptions.extra['retried'] =
+            (e.requestOptions.extra['retried'] ?? 0) + 1;
         try {
           return handler.resolve(await dio.fetch(e.requestOptions));
         } catch (_) {/* cai no erro original */}
