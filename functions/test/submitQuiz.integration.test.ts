@@ -233,6 +233,21 @@ describe('submitQuiz — idempotência contra o emulador', () => {
     expect(logs.size).toBe(1);
   }, 30_000);
 
+  it('responder só parte das questões é recusado — senão a nota seria sobre as que se sabe', async () => {
+    const uid = 'uidRespostaIncompleta0001';
+    await seedUser(uid);
+    const token = await idTokenFor(uid);
+
+    const r = await callSubmitQuiz(token, {
+      lessonId: LESSON, idempotencyKey: randomUUID(), clientElapsedMs, answers: [answers[0]],
+    });
+
+    expect(r.status).toBe(400);
+    expect(r.body.error?.message).toBe('INCOMPLETE_ANSWERS');
+    const events = await db.collection('users').doc(uid).collection('xpEvents').get();
+    expect(events.size).toBe(0);
+  }, 30_000);
+
   it('sem Authorization a Callable recusa antes de tocar o banco', async () => {
     const res = await fetch(callableUrl('submitQuiz'), {
       method: 'POST',

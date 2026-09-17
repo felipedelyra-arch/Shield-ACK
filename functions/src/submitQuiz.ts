@@ -68,17 +68,21 @@ export const submitQuiz = guarded(
     const questionIds = answers.map((a) => a.questionId);
     if (new Set(questionIds).size !== questionIds.length) throw Err.invalidArg('DUPLICATE_QUESTION');
 
-    const keyRefs = questionIds.map((qid) => db.collection('answerKeys').doc(qid));
-    const qRefs = questionIds.map((qid) => lessonRef.collection('questions').doc(qid));
-    const snaps = await db.getAll(...keyRefs, ...qRefs);
-    const keySnaps = snaps.slice(0, questionIds.length);
-    const qSnaps = snaps.slice(questionIds.length);
+    // Todas as questões da lição, não só as enviadas: a nota é acertos ÷ respondidas,
+    // então responder só a que se sabe daria 100%.
+    const lessonQuestions = await lessonRef.collection('questions').limit(20).get();
+    const qById = new Map(lessonQuestions.docs.map((d) => [d.id, d]));
+    if (qById.size !== questionIds.length || !questionIds.every((id) => qById.has(id))) {
+      throw Err.invalidArg('INCOMPLETE_ANSWERS');
+    }
+
+    const keySnaps = await db.getAll(...questionIds.map((qid) => db.collection('answerKeys').doc(qid)));
 
     const perQuestion = answers.map((a, i) => {
       const key = keySnaps[i];
-      const q = qSnaps[i];
+      const q = qById.get(a.questionId)!;
       // Gabarito de outra lição não vale — impede montar um quiz com questões fáceis.
-      if (!key?.exists || !q?.exists || key.get('lessonId') !== lessonId) {
+      if (!key?.exists || key.get('lessonId') !== lessonId) {
         return { questionId: a.questionId, correct: false, explanation: '' };
       }
       const type = q.get('type') as QuestionType;

@@ -53,7 +53,11 @@ Regras válidas para **todas**:
 ```
 
 **Erros:** `LESSON_LOCKED` (permission-denied) · `NO_HEARTS` (permission-denied) ·
-`DUPLICATE_QUESTION` (invalid-argument) · `NOT_FOUND` · `RATE_LIMITED`.
+`DUPLICATE_QUESTION` (invalid-argument) · `INCOMPLETE_ANSWERS` (invalid-argument) ·
+`NOT_FOUND` · `RATE_LIMITED` · `CONTENTION` (unavailable, retentável).
+
+`answers` precisa cobrir **todas** as questões da lição: a nota é acertos ÷ respondidas,
+então aceitar parte delas deixaria responder só a que se sabe e tirar 100%.
 
 **Idempotência — o mecanismo exato:**
 `users/{uid}/xpEvents/{idempotencyKey}` é criado com `tx.create()`. A segunda chamada
