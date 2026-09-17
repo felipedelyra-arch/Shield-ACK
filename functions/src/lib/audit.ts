@@ -25,6 +25,6 @@ export async function audit(
     });
   } catch (e) {
     // Auditoria nunca pode derrubar a operação de negócio. Falha vira log estruturado.
-    console.error(JSON.stringify({ severity: 'ERROR', msg: 'audit_write_failed', action }));
+    console.error(JSON.stringify({ severity: 'ERROR', msg: 'audit_write_failed', action, error: String(e) }));
   }
 }
