@@ -17,10 +17,6 @@ service-account*.json
 .env.*
 build/symbols/
 
-# NOTA: google-services.json e GoogleService-Info.plist NÃO são segredos
-# (identificadores públicos). São versionados por flavor de propósito —
-# ver docs/05-seguranca-mobile.md §5.0.
-
 # Functions
 functions/node_modules/
 functions/lib/
@@ -30,3 +26,11 @@ node_modules/
 # Firebase
 .firebase/
 *-debug.log
+
+# Config do Firebase por ambiente — fica fora do repositório
+lib/firebase_options.dart
+android/app/src/*/google-services.json
+ios/**/GoogleService-Info.plist
+
+# Configuração local do Claude Code
+.claude/

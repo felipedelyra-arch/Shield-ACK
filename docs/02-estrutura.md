@@ -5,7 +5,7 @@ shieldack/
 ├── lib/
 │   ├── main.dart                      # bootstrap: Firebase → Keystore → banco → integridade → outbox
 │   ├── app.dart
-│   ├── firebase_options.dart          # gerado por flutterfire configure (NÃO é segredo)
+│   ├── firebase_options.dart          # gerado por flutterfire configure (fora do git)
 │   ├── core/
 │   │   ├── error/{failure.dart, result.dart}
 │   │   ├── di/providers.dart          # Riverpod = DI; sem get_it

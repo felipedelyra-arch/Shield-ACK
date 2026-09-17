@@ -17,6 +17,9 @@ jobs:
       - uses: subosito/flutter-action@v2
         with: { flutter-version: '${{ env.FLUTTER_VERSION }}', channel: stable }
       - run: flutter pub get
+      - name: Config do Firebase (fora do repositório)
+        run: echo "$FIREBASE_OPTIONS_DART" > lib/firebase_options.dart
+        env: { FIREBASE_OPTIONS_DART: '${{ secrets.FIREBASE_OPTIONS_DART }}' }
       - run: dart run build_runner build --delete-conflicting-outputs
       - run: dart format --set-exit-if-changed lib test
       - run: flutter analyze --fatal-infos
@@ -70,7 +73,6 @@ jobs:
           set -e
           ! grep -rnE "(BEGIN (RSA|EC|OPENSSH) PRIVATE KEY|service_account|AIza[0-9A-Za-z_-]{35})" \
             --include='*.ts' --include='*.dart' --include='*.json' \
-            --exclude='google-services.json' --exclude='GoogleService-Info.plist' --exclude='firebase_options.dart' \
             functions/src lib
           ! grep -rn "functions.config()" functions/src
 

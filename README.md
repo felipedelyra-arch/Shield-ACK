@@ -63,26 +63,6 @@ Sem o upload dos símbolos, os crashes ficam ilegíveis. O passo não é opciona
 Projetos Firebase **separados** para dev / staging / prod, com flavors no Flutter.
 Teste de carga roda só em staging.
 
-## Armadilhas de ambiente encontradas (reais, nesta máquina)
-
-1. **Caminho com espaço/acento quebra o analysis server.** Em
-   `~/Área de trabalho/Aplicativo Shield Ack`, o `flutter analyze` morre com
-   `FormatException: Unexpected end of input` — o framing LSP calcula
-   Content-Length em caracteres, não em bytes. Workaround: analisar por um
-   symlink ASCII (`ln -s "$PWD" /tmp/shieldack && cd /tmp/shieldack`).
-   O CI não sofre disso; máquinas de dev com pasta em português, sim.
-
-2. **`freezed` 2.x + `analyzer` 7.x crasha todo codegen.** Sintoma:
-   `Missing implementation of visitDotShorthandPropertyAccess` e o aviso
-   `SDK language version 3.13.0 is newer than analyzer language version 3.9.0`.
-   Resolvido com `flutter pub upgrade --major-versions`. Se voltar, é esse.
-
-3. **`sqlcipher_flutter_libs` acima de 0.6 é um shim vazio.** No `sqlite3` 3.x o
-   SQLCipher é selecionado por `hooks.user_defines.sqlite3.source: sqlcipher` no
-   `pubspec.yaml`. Sem essa chave o `PRAGMA key` é ignorado **em silêncio** e o
-   banco nasce em claro — por isso `app_database.dart` valida
-   `PRAGMA cipher_version` e lança.
-
 ## Ver só a interface (modo demo)
 
 Roda **só a interface**, com dados em memória e sem Firebase:
@@ -134,8 +114,3 @@ liberado apenas em `android/app/src/debug/`, e o app recusa subir com
 Se o aparelho não aparecer, quase sempre é uma destas três: cabo só de carga,
 o diálogo de autorização não foi aceito, ou o modo USB está em "Somente carga" —
 troque para "Transferência de arquivos (MTP)".
-
-### Plugin ponytail
-
-Fixado no projeto em `.claude/settings.json` (marketplace
-`DietrichGebert/ponytail`), então quem clonar recebe junto.
